@@ -19,7 +19,7 @@ function normalizeOriginList(value) {
         .flatMap((entry) =>
           String(entry)
             .split(",")
-            .map((origin) => origin.trim()),
+            .map((origin) => origin.trim().replace(/^['\"]|['\"]$/g, "")),
         )
         .filter(Boolean),
     ),
@@ -27,7 +27,11 @@ function normalizeOriginList(value) {
 }
 
 function getDefaultCorsOrigins(env) {
-  const defaults = ["http://localhost:3000"];
+  const defaults = [
+    "http://localhost:3000",
+    "https://www.afrapayafrica.com",
+    "https://afrapayafrica.com",
+  ];
 
   if (env.APP_URL) {
     defaults.push(env.APP_URL);
