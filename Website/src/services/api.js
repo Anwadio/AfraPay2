@@ -10,7 +10,7 @@ import toast from "react-hot-toast";
 
 // Create axios instance with default configuration
 const api = axios.create({
-  baseURL: "http://localhost:5000/api/v1",
+  baseURL: "https://afra-pay-backend.onrender.com/api/v1",
   timeout: 30000, // 30 seconds
   headers: {
     "Content-Type": "application/json",
