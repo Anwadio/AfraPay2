@@ -6,6 +6,52 @@
 require("dotenv").config();
 const Joi = require("joi");
 
+function normalizeOriginList(value) {
+  if (!value) {
+    return [];
+  }
+
+  const rawValues = Array.isArray(value) ? value : [value];
+
+  return [
+    ...new Set(
+      rawValues
+        .flatMap((entry) =>
+          String(entry)
+            .split(",")
+            .map((origin) => origin.trim()),
+        )
+        .filter(Boolean),
+    ),
+  ];
+}
+
+function getDefaultCorsOrigins(env) {
+  const defaults = ["http://localhost:3000"];
+
+  if (env.APP_URL) {
+    defaults.push(env.APP_URL);
+
+    try {
+      const appUrl = new URL(env.APP_URL);
+
+      if (appUrl.hostname.startsWith("www.")) {
+        const apexUrl = new URL(env.APP_URL);
+        apexUrl.hostname = appUrl.hostname.replace(/^www\./, "");
+        defaults.push(apexUrl.toString().replace(/\/$/, ""));
+      } else if (!appUrl.hostname.startsWith("localhost")) {
+        const wwwUrl = new URL(env.APP_URL);
+        wwwUrl.hostname = `www.${appUrl.hostname}`;
+        defaults.push(wwwUrl.toString().replace(/\/$/, ""));
+      }
+    } catch (error) {
+      // Ignore malformed APP_URL here; Joi validation handles it separately.
+    }
+  }
+
+  return [...new Set(defaults.map((origin) => origin.replace(/\/$/, "")))];
+}
+
 // Environment validation schema
 const envSchema = Joi.object({
   NODE_ENV: Joi.string()
@@ -159,6 +205,24 @@ if (error) {
 }
 
 // Configuration object
+const allowedOrigins = (() => {
+  const configuredOrigins = normalizeOriginList(env.CORS_ORIGIN).map((origin) =>
+    origin.replace(/\/$/, ""),
+  );
+
+  if (configuredOrigins.includes("*")) {
+    return true;
+  }
+
+  const fallbackOrigins = getDefaultCorsOrigins(env);
+
+  if (!configuredOrigins.length) {
+    return fallbackOrigins;
+  }
+
+  return [...new Set([...configuredOrigins, ...fallbackOrigins])];
+})();
+
 const config = {
   app: {
     name: "AfraPay API",
@@ -232,7 +296,7 @@ const config = {
       enabled: env.ENABLE_RATE_LIMITING,
     },
     cors: {
-      allowedOrigins: env.CORS_ORIGIN || "http://localhost:3000",
+      allowedOrigins,
       allowedMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
       allowedHeaders: [
         "Origin",
