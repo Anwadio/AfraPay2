@@ -1,0 +1,626 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "AfraPay API",
+    "description": "Comprehensive fintech API for payments, transfers, and financial services across Africa",
+    "version": "1.0.0",
+    "contact": {
+      "name": "AfraPay API Support",
+      "email": "api-support@afrapay.com",
+      "url": "https://docs.afrapay.com"
+    },
+    "license": {
+      "name": "Private License",
+      "url": "https://afrapay.com/license"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api/v1",
+      "description": "Development Server"
+    },
+    {
+      "url": "https://api-staging.afrapay.com/v1",
+      "description": "Staging Server"
+    },
+    {
+      "url": "https://api.afrapay.com/v1",
+      "description": "Production Server"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Authentication",
+      "description": "User authentication and session management"
+    },
+    {
+      "name": "Users",
+      "description": "User management and profile operations"
+    },
+    {
+      "name": "Payments",
+      "description": "Payment processing and wallet operations"
+    },
+    {
+      "name": "Transactions",
+      "description": "Transaction history and analytics"
+    },
+    {
+      "name": "Admin",
+      "description": "Administrative functions"
+    },
+    {
+      "name": "Webhooks",
+      "description": "Webhook handling for external integrations"
+    },
+    {
+      "name": "Profile",
+      "description": "User profile and settings management"
+    }
+  ],
+  "paths": {
+    "/auth/register": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "Register a new user",
+        "description": "Create a new user account with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password", "firstName", "lastName"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "SecurePass123!"
+                  },
+                  "firstName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 50,
+                    "example": "John"
+                  },
+                  "lastName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 50,
+                    "example": "Doe"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "example": "+1234567890"
+                  },
+                  "dateOfBirth": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "1990-01-01"
+                  },
+                  "country": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2,
+                    "example": "US"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "User registered successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "User already exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": ["Authentication"],
+        "summary": "User login",
+        "description": "Authenticate user with email and password",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "user@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "example": "SecurePass123!"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Login successful",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuthResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many login attempts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/payments": {
+      "post": {
+        "tags": ["Payments"],
+        "summary": "Create a payment",
+        "description": "Process a new payment transaction",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["amount", "currency", "paymentMethod"],
+                "properties": {
+                  "amount": {
+                    "type": "number",
+                    "minimum": 0.01,
+                    "example": 100.00
+                  },
+                  "currency": {
+                    "type": "string",
+                    "enum": ["USD", "EUR", "GBP", "NGN", "GHS", "KES", "ZAR"],
+                    "example": "USD"
+                  },
+                  "recipientId": {
+                    "type": "string",
+                    "example": "user_123"
+                  },
+                  "recipientEmail": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "recipient@example.com"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "example": "Payment for services"
+                  },
+                  "paymentMethod": {
+                    "type": "string",
+                    "enum": ["card", "bank_transfer", "mobile_money", "crypto"],
+                    "example": "card"
+                  },
+                  "metadata": {
+                    "type": "object",
+                    "example": {
+                      "orderId": "order_123",
+                      "customField": "value"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Payment created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid payment data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": ["Payments"],
+        "summary": "Get user payments",
+        "description": "Retrieve paginated list of user's payments",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "Page number",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "Items per page",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "description": "Filter by payment status",
+            "schema": {
+              "type": "string",
+              "enum": ["pending", "processing", "completed", "failed", "cancelled"]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payments retrieved successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaginatedPayments"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "AuthResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Authentication successful"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "user": {
+                "$ref": "#/components/schemas/User"
+              },
+              "tokens": {
+                "type": "object",
+                "properties": {
+                  "accessToken": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  },
+                  "refreshToken": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  },
+                  "expiresIn": {
+                    "type": "integer",
+                    "example": 3600
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "user_123"
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "example": "user@example.com"
+          },
+          "firstName": {
+            "type": "string",
+            "example": "John"
+          },
+          "lastName": {
+            "type": "string",
+            "example": "Doe"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+1234567890"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["user", "merchant", "agent", "admin", "super_admin"],
+            "example": "user"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["active", "inactive", "suspended", "blocked"],
+            "example": "active"
+          },
+          "verified": {
+            "type": "boolean",
+            "example": false
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-01-01T00:00:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-01-01T00:00:00Z"
+          }
+        }
+      },
+      "PaymentResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Payment created successfully"
+          },
+          "data": {
+            "$ref": "#/components/schemas/Payment"
+          }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "payment_123"
+          },
+          "amount": {
+            "type": "number",
+            "example": 100.00
+          },
+          "currency": {
+            "type": "string",
+            "example": "USD"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "processing", "completed", "failed", "cancelled"],
+            "example": "pending"
+          },
+          "paymentMethod": {
+            "type": "string",
+            "example": "card"
+          },
+          "description": {
+            "type": "string",
+            "example": "Payment for services"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-01-01T00:00:00Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2023-01-01T00:00:00Z"
+          }
+        }
+      },
+      "PaginatedPayments": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Payments retrieved successfully"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Payment"
+            }
+          },
+          "pagination": {
+            "type": "object",
+            "properties": {
+              "currentPage": {
+                "type": "integer",
+                "example": 1
+              },
+              "totalPages": {
+                "type": "integer",
+                "example": 5
+              },
+              "totalItems": {
+                "type": "integer",
+                "example": 100
+              },
+              "itemsPerPage": {
+                "type": "integer",
+                "example": 20
+              },
+              "hasNextPage": {
+                "type": "boolean",
+                "example": true
+              },
+              "hasPrevPage": {
+                "type": "boolean",
+                "example": false
+              }
+            }
+          }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "example": "VALIDATION_ERROR"
+              },
+              "message": {
+                "type": "string",
+                "example": "Request validation failed"
+              },
+              "details": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "field": {
+                      "type": "string",
+                      "example": "email"
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Valid email is required"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

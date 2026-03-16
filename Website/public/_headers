@@ -1,0 +1,55 @@
+/*
+ * _headers — HTTP security & performance headers for static hosting.
+ *
+ * Compatible with:  Netlify, Cloudflare Pages, Vercel (via vercel.json)
+ * Reference:  https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers
+ *
+ * For Express/Node backend add the equivalent using the `helmet` package.
+ */
+
+# ── All responses ──────────────────────────────────────────────────────────
+/*
+  # Prevent MIME-type sniffing
+  X-Content-Type-Options: nosniff
+
+  # Clickjacking protection
+  X-Frame-Options: SAMEORIGIN
+
+  # Enforce HTTPS for 1 year (include subdomains)
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+  # Disable browser-native XSS auditor (deprecated, but harmless)
+  X-XSS-Protection: 1; mode=block
+
+  # Control referrer information
+  Referrer-Policy: strict-origin-when-cross-origin
+
+  # Restrict browser feature access
+  Permissions-Policy: camera=(), microphone=(), geolocation=(self), payment=(self)
+
+  # Content Security Policy
+  # Tighten `script-src` once you identify all third-party script sources.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://cloud.appwrite.io https://accounts.google.com; frame-src https://accounts.google.com; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests
+
+# ── Static assets – long cache ─────────────────────────────────────────────
+/static/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/mainlogo.png
+  Cache-Control: public, max-age=86400
+
+/og-image.png
+  Cache-Control: public, max-age=86400
+
+# ── Sitemap & robots ───────────────────────────────────────────────────────
+/sitemap.xml
+  Cache-Control: public, max-age=86400
+  Content-Type: application/xml; charset=utf-8
+
+/robots.txt
+  Cache-Control: public, max-age=86400
+  Content-Type: text/plain; charset=utf-8
+
+# ── HTML – no cache (SPA routing) ─────────────────────────────────────────
+/index.html
+  Cache-Control: no-cache, no-store, must-revalidate

@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+
+    <!-- ── Viewport & theme ─────────────────────────────────────────── -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#0066cc" />
+    <meta name="color-scheme" content="light dark" />
+
+    <!-- ── Favicons & PWA ───────────────────────────────────────────── -->
+    <link rel="icon" href="%PUBLIC_URL%/mainlogo.png" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/mainlogo.png" />
+    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
+
+    <!-- ── Core SEO meta (overridden per-page by SEOHead.jsx) ────────── -->
+    <title>AfraPay – Secure Payments Across Africa</title>
+    <meta
+      name="description"
+      content="AfraPay enables secure global payments, business tills, and fast mobile transfers across Africa. Send, receive, and manage money with confidence."
+    />
+    <meta
+      name="keywords"
+      content="AfraPay, Africa payments, mobile money, fintech Africa, send money Africa, digital wallet, South Sudan payments"
+    />
+    <meta name="author" content="AfraPay Africa Limited" />
+    <meta
+      name="robots"
+      content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1"
+    />
+    <meta name="googlebot" content="index, follow" />
+    <link rel="canonical" href="https://www.afrapayafrica.com/" />
+
+    <!-- ── Geo signals ──────────────────────────────────────────────── -->
+    <meta name="geo.region" content="SS" />
+    <meta name="geo.placename" content="Juba, South Sudan" />
+
+    <!-- ── Open Graph (overridden per-page by SEOHead.jsx) ───────────── -->
+    <meta property="og:site_name" content="AfraPay" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.afrapayafrica.com/" />
+    <meta
+      property="og:title"
+      content="AfraPay – Secure Payments Across Africa"
+    />
+    <meta
+      property="og:description"
+      content="AfraPay enables secure global payments, business tills, and fast mobile transfers across Africa. Send, receive, and manage money with confidence."
+    />
+    <meta
+      property="og:image"
+      content="https://www.afrapayafrica.com/og-image.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- ── Twitter Card (overridden per-page by SEOHead.jsx) ─────────── -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:site" content="@AfraPay" />
+    <meta name="twitter:creator" content="@AfraPay" />
+    <meta
+      name="twitter:title"
+      content="AfraPay – Secure Payments Across Africa"
+    />
+    <meta
+      name="twitter:description"
+      content="AfraPay enables secure global payments, business tills, and fast mobile transfers across Africa."
+    />
+    <meta
+      name="twitter:image"
+      content="https://www.afrapayafrica.com/og-image.png"
+    />
+
+    <!-- ── Performance: resource hints ─────────────────────────────── -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="dns-prefetch" href="https://cloud.appwrite.io" />
+    <link rel="preload" href="%PUBLIC_URL%/mainlogo.png" as="image" />
+
+    <!-- ── Baseline Organization structured data ─────────────────────
+         SEOHead.jsx replaces #seo-page-schema per route. This script
+         provides fallback data for crawlers that execute JavaScript
+         slowly or not at all. ────────────────────────────────────── -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://www.afrapayafrica.com/#organization",
+            "name": "AfraPay",
+            "url": "https://www.afrapayafrica.com",
+            "logo": {
+              "@type": "ImageObject",
+              "url": "https://www.afrapayafrica.com/mainlogo.png",
+              "width": 192,
+              "height": 192
+            },
+            "description": "AfraPay is a secure digital payment platform enabling fast transfers, business tills, and financial services across Africa.",
+            "foundingDate": "2024",
+            "areaServed": "Africa",
+            "address": {
+              "@type": "PostalAddress",
+              "addressLocality": "Juba",
+              "addressCountry": "SS"
+            },
+            "contactPoint": {
+              "@type": "ContactPoint",
+              "telephone": "+211-92-000-0000",
+              "email": "support@afrapayafrica.com",
+              "contactType": "customer service",
+              "availableLanguage": ["English"]
+            }
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://www.afrapayafrica.com/#website",
+            "url": "https://www.afrapayafrica.com",
+            "name": "AfraPay",
+            "publisher": {
+              "@id": "https://www.afrapayafrica.com/#organization"
+            },
+            "inLanguage": "en-US",
+            "potentialAction": {
+              "@type": "SearchAction",
+              "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": "https://www.afrapayafrica.com/blog?q={search_term_string}"
+              },
+              "query-input": "required name=search_term_string"
+            }
+          }
+        ]
+      }
+    </script>
+  </head>
+  <body>
+    <noscript>
+      You need to enable JavaScript to run AfraPay. Visit
+      <a href="https://www.afrapayafrica.com">www.afrapayafrica.com</a> for more
+      information.
+    </noscript>
+    <div id="root"></div>
+  </body>
+</html>

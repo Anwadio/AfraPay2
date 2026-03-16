@@ -1,0 +1,21 @@
+{
+  "chat.tools.terminal.autoApprove": {
+    "npm install": true,
+    "/^cd \"c:\\\\Users\\\\ANTHONY WAI\\\\Desktop\\\\Afra-pay2\\\\backend\" ; node --check src/controllers/authController\\.js ; node --check src/services/emailService\\.js ; echo \"Syntax OK\"$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^cd \"c:\\\\Users\\\\ANTHONY WAI\\\\Desktop\\\\Afra-pay2\\\\backend\" ; node --check src/controllers/authController\\.js 2>&1 ; node --check src/services/emailService\\.js 2>&1 ; Write-Host \"Syntax OK\"$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^node --check \"c:\\\\Users\\\\ANTHONY WAI\\\\Desktop\\\\Afra-pay2\\\\backend\\\\src\\\\controllers\\\\authController\\.js\"$/": {
+      "approve": true,
+      "matchCommandLine": true
+    },
+    "/^node --check \"c:\\\\Users\\\\ANTHONY WAI\\\\Desktop\\\\Afra-pay2\\\\backend\\\\src\\\\services\\\\emailService\\.js\"$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
+}

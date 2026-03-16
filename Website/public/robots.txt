@@ -1,0 +1,44 @@
+# ============================================================
+# AfraPay – robots.txt
+# Generated: 2026-03-15
+# Docs: https://developers.google.com/search/docs/crawling-indexing/robots/intro
+# ============================================================
+
+User-agent: *
+
+# ── Allow all public marketing & informational pages ──────
+Allow: /$
+Allow: /pricing
+Allow: /about
+Allow: /contact
+Allow: /blog
+Allow: /security-info
+Allow: /careers
+Allow: /terms
+Allow: /privacy
+
+# ── Block authenticated / private dashboard routes ─────────
+Disallow: /dashboard
+Disallow: /dashboard/
+Disallow: /auth/
+Disallow: /auth/login
+Disallow: /auth/register
+Disallow: /auth/reset-password
+Disallow: /auth/verify-email
+Disallow: /wallets
+Disallow: /send-money
+Disallow: /transactions
+Disallow: /analytics
+Disallow: /profile
+Disallow: /settings
+Disallow: /notifications
+Disallow: /cards
+Disallow: /account-security
+Disallow: /help
+
+# ── Block API and static build artifacts ───────────────────
+Disallow: /static/
+Disallow: /api/
+
+# ── Sitemap location ───────────────────────────────────────
+Sitemap: https://www.afrapay.com/sitemap.xml

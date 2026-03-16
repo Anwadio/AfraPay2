@@ -1,0 +1,15 @@
+/*
+ * _redirects — Netlify / Cloudflare Pages SPA routing fallback.
+ *
+ * This ensures all routes are served by index.html so React Router
+ * can handle client-side navigation correctly after a hard refresh
+ * or when a URL is shared directly.
+ *
+ * Without this, visiting https://www.afrapay.com/pricing directly
+ * would return a 404 from the static host.
+ *
+ * Reference: https://docs.netlify.com/routing/redirects/
+ */
+
+# SPA fallback — must be the last rule
+/*    /index.html   200
