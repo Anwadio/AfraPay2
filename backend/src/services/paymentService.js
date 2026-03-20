@@ -579,6 +579,70 @@ class PaymentService {
       completedAt: doc.completedAt || null,
     };
   }
+
+  /**
+   * Return the authenticated user's N most-recent outgoing send_money transfers.
+   * Used by the "Recent Transfers" panel on the Send Money page.
+   *
+   * @param {string} userId  Authenticated user's AfraPay ID (maps to senderId field)
+   * @param {number} limit   Maximum records — capped at 20
+   */
+  async getRecentTransfers(userId, limit = 10) {
+    const db = this._databases();
+    const safeLimit = Math.min(parseInt(limit) || 10, 20);
+    try {
+      const result = await db.listDocuments(DB(), TRANSACTIONS(), [
+        Query.equal("senderId", userId),
+        Query.equal("type", "send_money"),
+        Query.orderDesc("createdAt"),
+        Query.limit(safeLimit),
+        Query.select([
+          "$id",
+          "receiverPhone",
+          "receiverAccountNumber",
+          "receiverAccountName",
+          "receiverProvider",
+          "amount",
+          "currency",
+          "status",
+          "description",
+          "createdAt",
+        ]),
+      ]);
+      return result.documents.map((doc) => ({
+        id: doc.$id,
+        recipient:
+          doc.receiverAccountName ||
+          (doc.receiverPhone ? this._maskPhone(doc.receiverPhone) : null) ||
+          (doc.receiverAccountNumber
+            ? this._maskAccount(doc.receiverAccountNumber)
+            : null) ||
+          "—",
+        provider: doc.receiverProvider,
+        amount: doc.amount,
+        currency: doc.currency,
+        status: doc.status,
+        description: doc.description || null,
+        createdAt: doc.createdAt,
+      }));
+    } catch (err) {
+      logger.error("PaymentService: getRecentTransfers failed", {
+        userId,
+        error: err.message,
+      });
+      throw err;
+    }
+  }
+
+  _maskPhone(phone) {
+    if (!phone || phone.length < 7) return phone;
+    return phone.slice(0, 4) + "****" + phone.slice(-3);
+  }
+
+  _maskAccount(account) {
+    if (!account || account.length < 5) return account;
+    return account.slice(0, 3) + "****" + account.slice(-3);
+  }
 }
 
 module.exports = new PaymentService();

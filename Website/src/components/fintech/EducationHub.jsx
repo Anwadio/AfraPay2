@@ -322,7 +322,7 @@ const FeaturedContent = ({ content, onContentClick }) => {
 /**
  * Learning Path Cards
  */
-const LearningPathCards = ({ paths, variant = "default" }) => {
+const LearningPathCards = ({ paths, variant = "default", onEnroll }) => {
   if (!paths || paths.length === 0) {
     return (
       <div className="text-center py-8">
@@ -337,7 +337,12 @@ const LearningPathCards = ({ paths, variant = "default" }) => {
       gap="md"
     >
       {paths.map((path) => (
-        <LearningPathCard key={path.id} path={path} variant={variant} />
+        <LearningPathCard
+          key={path.id || path.$id}
+          path={path}
+          variant={variant}
+          onEnroll={onEnroll}
+        />
       ))}
     </DashboardGrid>
   );
@@ -652,7 +657,12 @@ const SearchFilters = ({
 /**
  * Content Grid
  */
-const ContentGrid = ({ content, onContentClick, loading = false }) => {
+const ContentGrid = ({
+  content,
+  onContentClick,
+  onEnroll,
+  loading = false,
+}) => {
   if (loading) {
     return (
       <DashboardGrid columns={3} gap="md">
@@ -695,9 +705,10 @@ const ContentGrid = ({ content, onContentClick, loading = false }) => {
     <DashboardGrid columns={3} gap="md">
       {content.map((item) => (
         <ContentCard
-          key={item.id}
+          key={item.id || item.$id}
           content={item}
           onClick={() => onContentClick(item)}
+          onEnroll={onEnroll}
         />
       ))}
     </DashboardGrid>
@@ -707,9 +718,279 @@ const ContentGrid = ({ content, onContentClick, loading = false }) => {
 /**
  * Individual Content Card
  */
-const ContentCard = ({ content, onClick }) => {
+const ContentCard = ({ content, onClick, onEnroll }) => {
   const getTypeIcon = (type) => {
     const icons = {
+      article: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+          />
+        </svg>
+      ),
+      video: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
+        </svg>
+      ),
+      course: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
+          />
+        </svg>
+      ),
+      guide: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+          />
+        </svg>
+      ),
+      tool: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+          />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+          />
+        </svg>
+      ),
+      webinar: (
+        <svg
+          className="w-4 h-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
+        </svg>
+      ),
+    };
+    return icons[type] || icons.article;
+  };
+
+  const getLevelColor = (level) => {
+    const colors = {
+      Beginner: "text-green-600 border-green-200",
+      beginner: "text-green-600 border-green-200",
+      Intermediate: "text-blue-600 border-blue-200",
+      intermediate: "text-blue-600 border-blue-200",
+      Advanced: "text-purple-600 border-purple-200",
+      advanced: "text-purple-600 border-purple-200",
+      "All Levels": "text-gray-600 border-gray-200",
+      all_levels: "text-gray-600 border-gray-200",
+    };
+    return colors[level] || colors.Beginner;
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    try {
+      return new Date(dateString).toLocaleDateString();
+    } catch {
+      return "";
+    }
+  };
+
+  const handleEnrollClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (onEnroll) {
+      onEnroll({ ...content, type: content.type || "content" });
+    }
+  };
+
+  return (
+    <DashboardCard
+      className="group hover:shadow-lg transition-all duration-200 cursor-pointer"
+      onClick={onClick}
+    >
+      <div className="relative">
+        {/* Thumbnail placeholder */}
+        <div className="w-full h-32 bg-primary-50 rounded-t-lg flex items-center justify-center">
+          {getTypeIcon(content.type)}
+        </div>
+
+        {/* Featured badge */}
+        {content.featured && (
+          <div className="absolute top-2 right-2">
+            <Badge
+              variant="secondary"
+              size="sm"
+              className="bg-yellow-100 text-yellow-800"
+            >
+              Featured
+            </Badge>
+          </div>
+        )}
+
+        {/* Type badge */}
+        <div className="absolute top-2 left-2">
+          <Badge
+            variant="secondary"
+            size="sm"
+            className="bg-white/90 text-primary-800"
+          >
+            {content.type}
+          </Badge>
+        </div>
+      </div>
+
+      <div className="p-4 space-y-3">
+        {/* Header */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="outline"
+              size="sm"
+              className={getLevelColor(content.level)}
+            >
+              {content.level}
+            </Badge>
+            {content.enrolled && (
+              <Badge
+                variant="secondary"
+                size="sm"
+                className="bg-blue-100 text-blue-800"
+              >
+                Enrolled
+              </Badge>
+            )}
+          </div>
+          <h3 className="text-base font-semibold text-primary-900 group-hover:text-primary-600 transition-colors line-clamp-2">
+            {content.title}
+          </h3>
+          <p className="text-sm text-primary-700 line-clamp-2">
+            {content.description}
+          </p>
+        </div>
+
+        {/* Meta */}
+        <div className="flex items-center justify-between text-xs text-primary-600">
+          <span>
+            {content.durationMinutes
+              ? `${content.durationMinutes} min`
+              : content.duration || "TBD"}
+          </span>
+          <span>By {content.authorName || content.author || "AfraPay"}</span>
+        </div>
+
+        {/* Stats */}
+        <div className="flex items-center justify-between text-xs text-primary-600 pt-2 border-t border-primary-100">
+          <div className="flex items-center gap-3">
+            <span className="flex items-center gap-1">
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                />
+              </svg>
+              {content.views || 0}
+            </span>
+            <span className="flex items-center gap-1">
+              <svg
+                className="w-3 h-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                />
+              </svg>
+              {content.likes || 0}
+            </span>
+          </div>
+          <span>{formatDate(content.publishedAt || content.createdAt)}</span>
+        </div>
+
+        {/* Action Button */}
+        {onEnroll && (
+          <div className="pt-2">
+            <Button
+              variant={content.enrolled ? "primary" : "outline"}
+              size="sm"
+              className="w-full"
+              onClick={handleEnrollClick}
+            >
+              {content.enrolled ? "Continue Learning" : "Enroll Now"}
+            </Button>
+          </div>
+        )}
+      </div>
+    </DashboardCard>
+  );
+};
+
+/**
       article: (
         <svg
           className="w-4 h-4"
@@ -834,11 +1115,9 @@ const ContentCard = ({ content, onClick }) => {
       className="group hover:shadow-lg transition-all duration-200 cursor-pointer"
       onClick={onClick}
     >
-      {/* Thumbnail */}
       <div className="relative h-32 bg-gradient-to-br from-primary-100 to-secondary-100 rounded-t-lg flex items-center justify-center">
         <div className="text-primary-400">{getTypeIcon(content.type)}</div>
 
-        {/* Bookmark icon */}
         {content.bookmarked && (
           <div className="absolute top-2 right-2 text-yellow-500">
             <svg className="w-5 h-5 fill-current" viewBox="0 0 20 20">
@@ -847,7 +1126,6 @@ const ContentCard = ({ content, onClick }) => {
           </div>
         )}
 
-        {/* Type badge */}
         <div className="absolute top-2 left-2">
           <Badge
             variant="secondary"
@@ -860,7 +1138,7 @@ const ContentCard = ({ content, onClick }) => {
       </div>
 
       <div className="p-4 space-y-3">
-        {/* Header */}
+   
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <Badge
@@ -879,13 +1157,12 @@ const ContentCard = ({ content, onClick }) => {
           </p>
         </div>
 
-        {/* Meta */}
+  
         <div className="flex items-center justify-between text-xs text-primary-600">
           <span>{content.duration}</span>
           <span>By {content.author}</span>
         </div>
 
-        {/* Stats */}
         <div className="flex items-center justify-between text-xs text-primary-600 pt-2 border-t border-primary-100">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
@@ -965,8 +1242,14 @@ const ContentCardSkeleton = () => {
 /**
  * Content Preview Modal
  */
-const ContentPreviewModal = ({ isOpen, onClose, content }) => {
+const ContentPreviewModal = ({ isOpen, onClose, content, onEnroll }) => {
   if (!isOpen || !content) return null;
+
+  const handleEnrollClick = () => {
+    if (onEnroll) {
+      onEnroll({ ...content, type: content.type || "content" });
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1084,7 +1367,9 @@ const ContentPreviewModal = ({ isOpen, onClose, content }) => {
               </svg>
               Bookmark
             </Button>
-            <Button>Start Learning</Button>
+            <Button onClick={handleEnrollClick}>
+              {content.enrolled ? "Continue Learning" : "Start Learning"}
+            </Button>
           </div>
         </div>
       </div>

@@ -1,1 +1,12 @@
 node_modules
+
+# Local environment files (contain dev secrets — never commit)
+.env
+.env.local
+.env.development
+.env.development.local
+.env.test.local
+.env.production.local
+
+# .env.production IS committed so CI/CD and Vercel builds pick up the correct API URL
+

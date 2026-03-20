@@ -6,6 +6,8 @@ import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { DashboardSection } from "../components/layout/DashboardUtils";
 import { Button } from "../components/ui";
 import { useAuth } from "../contexts/AuthContext";
+import { formatCurrencyAmount } from "../utils/currency";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { userAPI, walletAPI, transactionAPI } from "../services/api";
 import { cn } from "../utils";
 import SendMoneyModal from "../components/fintech/SendMoneyModal";
@@ -39,6 +41,11 @@ const CURRENCY_META = {
     flag: "🇿🇦",
     color: "from-yellow-500 to-yellow-700",
   },
+  SSP: {
+    label: "South Sudanese Pound",
+    flag: "🇸🇸",
+    color: "from-sky-500 to-sky-700",
+  },
 };
 
 const getCurrencyMeta = (code) =>
@@ -49,11 +56,7 @@ const getCurrencyMeta = (code) =>
   };
 
 const formatBalance = (amount, currency) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-    minimumFractionDigits: 2,
-  }).format(amount ?? 0);
+  formatCurrencyAmount(amount ?? 0, currency);
 
 // ── WalletCard ───────────────────────────────────────────────────────────────
 const WalletCard = ({ currency, balance, onSend, onDeposit }) => {
@@ -198,6 +201,8 @@ const Wallets = () => {
     role: user?.role || "user",
   };
 
+  const { currency: displayCurrency } = useCurrency();
+
   const walletEntries = Object.entries(balances);
   const hasWallets = walletEntries.length > 0;
 
@@ -248,10 +253,10 @@ const Wallets = () => {
           <div className="rounded-2xl bg-gradient-to-r from-primary-600 to-secondary-600 p-5 text-white flex items-center justify-between shadow-lg">
             <div>
               <p className="text-white/70 text-xs uppercase tracking-wider font-medium">
-                Total Portfolio Value (USD)
+                Total Portfolio Value ({displayCurrency})
               </p>
               <p className="text-3xl font-bold mt-1 tabular-nums">
-                {formatBalance(totalUSD, "USD")}
+                {formatBalance(totalUSD, displayCurrency)}
               </p>
               <p className="text-white/60 text-xs mt-1">
                 {walletEntries.length} wallet

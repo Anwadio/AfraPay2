@@ -10,7 +10,9 @@ import toast from "react-hot-toast";
 
 // Create axios instance with default configuration
 const api = axios.create({
-  baseURL: "https://afra-pay-backend.onrender.com/api/v1",
+  baseURL:
+    process.env.REACT_APP_API_BASE_URL ||
+    "https://afra-pay-backend.onrender.com/api/v1",
   timeout: 30000, // 30 seconds
   headers: {
     "Content-Type": "application/json",
@@ -73,7 +75,7 @@ api.interceptors.response.use(
             config._retry = true;
             try {
               await axios.post(
-                `${process.env.REACT_APP_API_BASE_URL || "http://localhost:5000/api/v1"}/auth/refresh-token`,
+                `${process.env.REACT_APP_API_BASE_URL || "https://afra-pay-backend.onrender.com/api/v1"}/auth/refresh-token`,
                 {},
                 { withCredentials: true },
               );
@@ -296,9 +298,18 @@ export const userAPI = {
     return response;
   },
 
-  // Update user profile
+  // Update user profile (includes optional preferredLanguage field)
   updateProfile: async (profileData) => {
     const response = await api.put("/profile", profileData);
+    return response;
+  },
+
+  /**
+   * Convenience: persist the user's preferred language to their Appwrite profile.
+   * @param {string} lang - Locale code, e.g. "sw" | "ar-juba" | "en"
+   */
+  setPreferredLanguage: async (lang) => {
+    const response = await api.put("/profile", { preferredLanguage: lang });
     return response;
   },
 
@@ -322,6 +333,17 @@ export const userAPI = {
     });
     return response;
   },
+
+  // Session management
+  getSessions: async () => api.get("/profile/sessions"),
+  revokeSession: async (sessionId) =>
+    api.delete(`/profile/sessions/${sessionId}`),
+  revokeAllSessions: async () => api.delete("/profile/sessions"),
+
+  // Security settings
+  getSecuritySettings: async () => api.get("/profile/security"),
+  updateSecuritySettings: async (settings) =>
+    api.put("/profile/security", settings),
 };
 
 // Support API calls
@@ -398,6 +420,24 @@ export const paymentAPI = {
     const response = await api.get(`/payments/${paymentId}`);
     return response;
   },
+
+  // Get recent outgoing transfers for the Send Money "Recent Transfers" panel
+  getRecentTransfers: async (limit = 10) => {
+    const response = await api.get("/payments/recent", {
+      params: { limit },
+    });
+    return response;
+  },
+
+  /**
+   * GET /api/v1/payments/exchange-rates
+   * Returns live rates for East African + major currencies (USD base).
+   * Optional: pass { from: "KES", to: "USD" } to get a direct conversion rate.
+   */
+  getExchangeRates: async (params = {}) => {
+    const response = await api.get("/payments/exchange-rates", { params });
+    return response;
+  },
 };
 
 // Wallet API calls
@@ -459,6 +499,21 @@ export const transactionAPI = {
   },
 };
 
+// Analytics API calls – aggregated dashboard metrics for the Analytics page
+export const analyticsAPI = {
+  /**
+   * Fetch everything the Analytics page needs in a single round-trip:
+   *   summary, 6-month trend, category breakdown, provider breakdown,
+   *   top transactions, recent transactions.
+   *
+   * @param {{ period?: 'day'|'week'|'month'|'year', currency?: string }} params
+   */
+  getDashboard: async (params = {}) => {
+    const response = await api.get("/analytics/dashboard", { params });
+    return response;
+  },
+};
+
 // Notifications API calls
 export const notificationsAPI = {
   // Get paginated notifications (+ unreadCount in response)
@@ -492,10 +547,129 @@ export const notificationsAPI = {
   },
 };
 
+// Blog API calls
+export const blogAPI = {
+  // Get all blog posts with filtering and pagination
+  getPosts: async (params = {}) => {
+    const response = await api.get("/blog", { params });
+    return response;
+  },
+
+  // Get featured blog post
+  getFeaturedPost: async () => {
+    const response = await api.get("/blog/featured");
+    return response;
+  },
+
+  // Get blog post by slug
+  getPostBySlug: async (slug) => {
+    const response = await api.get(`/blog/${encodeURIComponent(slug)}`);
+    return response;
+  },
+
+  // Get available blog categories
+  getCategories: async () => {
+    const response = await api.get("/blog/categories");
+    return response;
+  },
+
+  // Admin: Create new blog post
+  createPost: async (postData) => {
+    const response = await api.post("/blog", postData);
+    return response;
+  },
+
+  // Admin: Update blog post
+  updatePost: async (id, postData) => {
+    const response = await api.put(`/blog/${id}`, postData);
+    return response;
+  },
+
+  // Admin: Delete blog post
+  deletePost: async (id) => {
+    const response = await api.delete(`/blog/${id}`);
+    return response;
+  },
+};
+
+// Newsletter API calls
+export const newsletterAPI = {
+  // Subscribe to newsletter
+  subscribe: async (subscriptionData) => {
+    const response = await api.post("/newsletter/subscribe", subscriptionData);
+    return response;
+  },
+
+  // Unsubscribe from newsletter
+  unsubscribe: async (email) => {
+    const response = await api.post("/newsletter/unsubscribe", { email });
+    return response;
+  },
+
+  // Update subscription preferences
+  updatePreferences: async (email, preferences) => {
+    const response = await api.put("/newsletter/preferences", {
+      email,
+      preferences,
+    });
+    return response;
+  },
+};
+
 // Access token lives in an httpOnly cookie — not readable from JS.
 // Use cached user profile as a soft indicator; verify via /auth/me for certainty.
 export const isAuthenticated = () => {
   return !!localStorage.getItem("user");
+};
+
+// Chat API calls
+export const chatAPI = {
+  // Create a new chat session
+  createSession: async () => {
+    const response = await api.post("/chat/session");
+    return response;
+  },
+
+  // Get chat messages for a session
+  getMessages: async (sessionId, params = {}) => {
+    const response = await api.get(`/chat/sessions/${sessionId}/messages`, {
+      params,
+    });
+    return response;
+  },
+
+  // Send a message in a chat session
+  sendMessage: async (sessionId, data) => {
+    const response = await api.post(
+      `/chat/sessions/${sessionId}/messages`,
+      data,
+    );
+    return response;
+  },
+
+  // Get active chat sessions (for admin dashboard)
+  getActiveSessions: async (params = {}) => {
+    const response = await api.get("/chat/sessions", { params });
+    return response;
+  },
+
+  // Update chat session status
+  updateSession: async (sessionId, data) => {
+    const response = await api.patch(`/chat/sessions/${sessionId}`, data);
+    return response;
+  },
+
+  // Get chat session details
+  getSessionDetails: async (sessionId) => {
+    const response = await api.get(`/chat/sessions/${sessionId}`);
+    return response;
+  },
+
+  // End a chat session
+  endSession: async (sessionId) => {
+    const response = await api.post(`/chat/sessions/${sessionId}/end`);
+    return response;
+  },
 };
 
 // Utility function to get current user from storage

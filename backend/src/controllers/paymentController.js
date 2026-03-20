@@ -5,6 +5,7 @@
 
 const { Query, ID } = require("node-appwrite");
 const bcrypt = require("bcryptjs");
+const axios = require("axios");
 const config = require("../config/environment");
 const logger = require("../utils/logger");
 const {
@@ -20,6 +21,13 @@ const getDatabases = () => dbConn.getDatabases();
 
 // ── Service layer ─────────────────────────────────────────────────────────
 const paymentService = require("../services/paymentService");
+
+// ── Alert helpers (lazy require to avoid circular deps) ───────────────────
+const getCreateNotification = () =>
+  require("./notificationController").createNotification;
+const emailService = require("../services/emailService");
+const getAlertUsers = () =>
+  require("../database/connection").appwrite.getUsers();
 
 // ── Collection ID helpers ──────────────────────────────────────────────────
 const DB_ID = () => config.database.appwrite.databaseId;
@@ -92,6 +100,14 @@ class PaymentController {
 
     // 202 Accepted for async providers (mpesa / mtn); 201 Created for wallet (synchronous)
     if (result.status === "completed") {
+      this._fireTransactionAlert(user.id, {
+        type: "payment",
+        amount,
+        currency,
+        recipient: receiverPhone || receiverAccountNumber || undefined,
+        status: result.status,
+        txId: result.transactionId || "",
+      });
       return res.created(result, "Transfer completed successfully");
     }
 
@@ -114,6 +130,115 @@ class PaymentController {
 
     const result = await paymentService.refreshStatus(transactionId, user.id);
     res.success(result, "Transaction status retrieved");
+  }
+
+  /**
+   * GET /api/v1/payments/recent
+   *
+   * Returns the authenticated user's last N outgoing send_money transfers,
+   * sorted newest-first. Intended for the "Recent Transfers" panel on the
+   * Send Money page. max limit is capped at 20 in the service layer.
+   */
+  async getRecentTransfers(req, res) {
+    const { user } = req;
+    const limit = Math.min(parseInt(req.query.limit) || 10, 20);
+    const transfers = await paymentService.getRecentTransfers(user.id, limit);
+    res.success({ transfers }, "Recent transfers retrieved");
+  }
+
+  /**
+   * GET /api/v1/payments/exchange-rates
+   *
+   * Returns live exchange rates for East African and major world currencies,
+   * all relative to USD. Rates are cached in-memory for 10 minutes to avoid
+   * hammering the upstream API.
+   *
+   * Optional query params:
+   *   ?from=KES&to=USD   — returns a single conversion rate
+   *   (no params)        — returns the full rate table
+   */
+  async getExchangeRates(req, res) {
+    const { from, to } = req.query;
+
+    // ── 10-minute in-memory cache ──────────────────────────────────────────
+    const now = Date.now();
+    const cache = PaymentController._rateCache;
+    if (cache.rates && now - cache.fetchedAt < 10 * 60 * 1000) {
+      return res.success(
+        PaymentController._buildRateResponse(cache.rates, from, to),
+        "Exchange rates retrieved",
+      );
+    }
+
+    // ── Fetch from open.er-api.com (free, no key) ──────────────────────────
+    let rawRates;
+    try {
+      const { data } = await axios.get(
+        "https://open.er-api.com/v6/latest/USD",
+        { timeout: 8000 },
+      );
+      if (data.result !== "success") throw new Error("Upstream API error");
+      rawRates = data.rates;
+    } catch (fetchErr) {
+      logger.warn("PaymentController: exchange rate fetch failed", {
+        error: fetchErr.message,
+      });
+      // Serve stale cache rather than returning a 500
+      if (cache.rates) {
+        return res.success(
+          PaymentController._buildRateResponse(cache.rates, from, to),
+          "Exchange rates retrieved (cached)",
+        );
+      }
+      throw fetchErr;
+    }
+
+    // Update cache
+    PaymentController._rateCache = { rates: rawRates, fetchedAt: now };
+
+    return res.success(
+      PaymentController._buildRateResponse(rawRates, from, to),
+      "Exchange rates retrieved",
+    );
+  }
+
+  /**
+   * Build the response payload from raw rates.
+   * Filters to East African + major currencies; if from/to are provided,
+   * returns just the conversion rate.
+   */
+  static _buildRateResponse(rawRates, from, to) {
+    const CURRENCIES = [
+      "USD",
+      "EUR",
+      "GBP",
+      "KES",
+      "UGX",
+      "TZS",
+      "ETB",
+      "RWF",
+      "SSP", // East Africa
+      "NGN",
+      "GHS",
+      "ZAR", // West / South Africa
+    ];
+
+    const rates = {};
+    for (const code of CURRENCIES) {
+      if (rawRates[code] !== undefined) rates[code] = rawRates[code];
+    }
+
+    if (from && to) {
+      const fromRate = rawRates[from.toUpperCase()];
+      const toRate = rawRates[to.toUpperCase()];
+      if (!fromRate || !toRate) {
+        return { from, to, rate: null, rates };
+      }
+      const rate = +(toRate / fromRate).toFixed(6);
+      return { from: from.toUpperCase(), to: to.toUpperCase(), rate, rates };
+    }
+
+    return { base: "USD", rates, updatedAt: new Date().toISOString() };
   }
 
   /**
@@ -442,6 +567,15 @@ class PaymentController {
         ip: req.ip,
       });
 
+      this._fireTransactionAlert(user.id, {
+        type: "transfer",
+        amount,
+        currency,
+        recipient: recipient.name || recipient.email || recipientId,
+        status: "completed",
+        txId: transferId,
+      });
+
       res.success(
         {
           transferId,
@@ -523,6 +657,14 @@ class PaymentController {
         ip: req.ip,
       });
 
+      this._fireTransactionAlert(user.id, {
+        type: "withdrawal",
+        amount,
+        currency,
+        status: withdrawalResult.status,
+        txId: withdrawalId,
+      });
+
       res.success(
         {
           withdrawalId,
@@ -574,6 +716,14 @@ class PaymentController {
         amount,
         currency,
         ip: req.ip,
+      });
+
+      this._fireTransactionAlert(user.id, {
+        type: "deposit",
+        amount,
+        currency,
+        status: "pending",
+        txId: depositId,
       });
 
       res.created(
@@ -724,6 +874,68 @@ class PaymentController {
       return null;
     }
   }
+
+  /**
+   * Fire transaction alert (in-app notification + email) for a user.
+   * Completely fire-and-forget — never throws or delays the caller.
+   *
+   * @param {string} userId
+   * @param {object} txInfo  { type, amount, currency, recipient?, status, txId }
+   */
+  async _fireTransactionAlert(userId, txInfo) {
+    setImmediate(async () => {
+      try {
+        const userRec = await getAlertUsers().get(userId);
+        if (userRec.prefs?.transactionAlerts !== "true") return;
+
+        const {
+          type = "transaction",
+          amount,
+          currency,
+          recipient,
+          status = "completed",
+          txId = "",
+        } = txInfo;
+        const typeLabel =
+          type === "transfer"
+            ? "Transfer"
+            : type === "withdrawal"
+              ? "Withdrawal"
+              : type === "deposit"
+                ? "Deposit"
+                : "Payment";
+
+        const message = recipient
+          ? `${typeLabel} of ${currency} ${amount} to ${recipient} — ${status}`
+          : `${typeLabel} of ${currency} ${amount} — ${status}`;
+
+        await getCreateNotification()(
+          userId,
+          "transaction",
+          `${typeLabel} ${status}`,
+          message,
+          "/transactions",
+        );
+
+        const firstName = (userRec.name || userRec.email || "User").split(
+          " ",
+        )[0];
+        await emailService.sendTransactionAlertEmail(
+          userRec.email,
+          firstName,
+          txInfo,
+        );
+      } catch (err) {
+        logger.warn("Transaction alert dispatch failed (non-fatal)", {
+          userId,
+          error: err.message,
+        });
+      }
+    });
+  }
 }
+
+// Static in-memory cache for exchange rates (shared across all requests)
+PaymentController._rateCache = { rates: null, fetchedAt: 0 };
 
 module.exports = new PaymentController();

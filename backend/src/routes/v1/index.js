@@ -17,6 +17,13 @@ const profileRoutes = require("./profile");
 const educationRoutes = require("./education");
 const supportRoutes = require("./support");
 const notificationRoutes = require("./notifications");
+const careersRoutes = require("./careers");
+const applicationsRoutes = require("./applications");
+const blogRoutes = require("./blog");
+const newsletterRoutes = require("./newsletter");
+const chatRoutes = require("./chat");
+const analyticsRoutes = require("./analytics");
+const cardRoutes = require("./cards");
 
 // Route configuration with middleware
 router.use("/auth", authRoutes);
@@ -40,6 +47,13 @@ router.use("/profile", profileRoutes);
 router.use("/education", educationRoutes);
 router.use("/support", supportRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/careers", careersRoutes);
+router.use("/applications", applicationsRoutes);
+router.use("/blog", blogRoutes);
+router.use("/newsletter", newsletterRoutes);
+router.use("/chat", chatRoutes);
+router.use("/analytics", analyticsRoutes);
+router.use("/cards", cardRoutes);
 
 // API v1 status
 router.get("/", (req, res) => {
@@ -55,6 +69,12 @@ router.get("/", (req, res) => {
         admin: "/api/v1/admin",
         webhooks: "/api/v1/webhooks",
         education: "/api/v1/education",
+        support: "/api/v1/support",
+        notifications: "/api/v1/notifications",
+        careers: "/api/v1/careers",
+        applications: "/api/v1/applications",
+        blog: "/api/v1/blog",
+        analytics: "/api/v1/analytics",
       },
     },
     "API v1 is operational",

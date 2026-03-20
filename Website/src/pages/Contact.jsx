@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -12,14 +13,17 @@ import {
 import { Icon } from "../components/common/Icons";
 import SEOHead from "../components/seo/SEOHead";
 import { SCHEMA_CONTACT } from "../components/seo/schemas";
+import { supportAPI } from "../services/api";
+import toast from "react-hot-toast";
+import LiveChat from "../components/chat/LiveChat";
 
 const CONTACT_CHANNELS = [
   {
     icon: "mail",
     title: "Email Us",
     description: "Our team typically responds within 2 hours.",
-    value: "support@afrapay.com",
-    action: "mailto:support@afrapay.com",
+    value: "support@afrapayafrica.com",
+    action: "mailto:support@afrapayafrica.com",
     actionLabel: "Send Email",
     color: "bg-primary-50 text-primary-600",
   },
@@ -37,7 +41,7 @@ const CONTACT_CHANNELS = [
     title: "Live Chat",
     description: "Chat with us in real time — no wait queue.",
     value: "Always online for registered users",
-    action: null,
+    action: "chat",
     actionLabel: "Open Chat",
     color: "bg-secondary-50 text-secondary-600",
   },
@@ -46,9 +50,14 @@ const CONTACT_CHANNELS = [
     title: "Visit Us",
     description: "Head office in the heart of Juba.",
     value: "Juba City Centre, South Sudan",
-    action: null,
+    action: "directions",
     actionLabel: "Get Directions",
     color: "bg-warning-50 text-warning-600",
+    coordinates: {
+      lat: 4.8594,
+      lng: 31.5713,
+      address: "Juba City Centre, Ministries Road, Juba, South Sudan",
+    },
   },
 ];
 
@@ -86,6 +95,7 @@ const OFFICES = [
     address: "Juba City Centre, Ministries Road",
     phone: "+211 92 000 0000",
     isHQ: true,
+    coordinates: { lat: 4.8594, lng: 31.5713 },
   },
   {
     city: "Wau",
@@ -93,6 +103,7 @@ const OFFICES = [
     address: "Wau Town, Commercial Street",
     phone: "+211 92 000 0001",
     isHQ: false,
+    coordinates: { lat: 7.7028, lng: 28.0098 },
   },
   {
     city: "Malakal",
@@ -100,6 +111,7 @@ const OFFICES = [
     address: "Malakal Centre, Main Avenue",
     phone: "+211 92 000 0002",
     isHQ: false,
+    coordinates: { lat: 9.5334, lng: 31.6605 },
   },
 ];
 
@@ -113,16 +125,204 @@ const Contact = () => {
     message: "",
   });
   const [submitted, setSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
   const [openFaq, setOpenFaq] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
-  const handleChange = (e) => {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleGetDirections = async (destination) => {
+    try {
+      // Check if geolocation is available
+      if (!navigator.geolocation) {
+        // Fallback: Open Google Maps without current location
+        const googleMapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination.address)}`;
+        window.open(googleMapsUrl, "_blank");
+        toast.info("Opening directions in Google Maps");
+        return;
+      }
+
+      // Show loading toast
+      const loadingToast = toast.loading(
+        "Getting your location for directions...",
+      );
+
+      // Get user's current position
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          toast.dismiss(loadingToast);
+          const { latitude, longitude } = position.coords;
+
+          // Detect platform and open appropriate map service
+          const isIOS =
+            /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+          const isMac = navigator.platform.toUpperCase().indexOf("MAC") >= 0;
+          const isAndroid = /Android/.test(navigator.userAgent);
+
+          let mapUrl;
+          let serviceName;
+
+          if (isIOS || isMac) {
+            // Apple Maps for iOS/Mac
+            mapUrl = `https://maps.apple.com/?saddr=${latitude},${longitude}&daddr=${destination.lat},${destination.lng}&dirflg=d`;
+            serviceName = "Apple Maps";
+          } else if (isAndroid) {
+            // Google Maps for Android
+            mapUrl = `https://www.google.com/maps/dir/${latitude},${longitude}/${destination.lat},${destination.lng}`;
+            serviceName = "Google Maps";
+          } else {
+            // Google Maps for other platforms
+            mapUrl = `https://www.google.com/maps/dir/${latitude},${longitude}/${destination.lat},${destination.lng}`;
+            serviceName = "Google Maps";
+          }
+
+          window.open(mapUrl, "_blank");
+          toast.success(`🗺️ Opening directions in ${serviceName}`);
+        },
+        (error) => {
+          toast.dismiss(loadingToast);
+          console.warn("Geolocation error:", error);
+
+          // Fallback: Open map service without current location
+          const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination.address)}`;
+          window.open(fallbackUrl, "_blank");
+
+          if (error.code === error.PERMISSION_DENIED) {
+            toast.info(
+              "📍 Location access denied. Opening directions without your current location.",
+            );
+          } else {
+            toast.info(
+              "🗺️ Unable to get your location. Opening directions in Google Maps.",
+            );
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000, // 5 minutes
+        },
+      );
+    } catch (error) {
+      console.error("Error getting directions:", error);
+      // Ultimate fallback
+      const fallbackUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination.address)}`;
+      window.open(fallbackUrl, "_blank");
+      toast.info("🗺️ Opening directions in Google Maps");
+    }
   };
 
-  const handleSubmit = (e) => {
+  const handleOfficeDirections = (office) => {
+    handleGetDirections({
+      lat: office.coordinates.lat,
+      lng: office.coordinates.lng,
+      address: `${office.address}, ${office.city}, ${office.country}`,
+    });
+  };
+
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+
+    // Clear error for this field when user starts typing
+    if (errors[name]) {
+      setErrors((prev) => ({ ...prev, [name]: "" }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Name validation
+    if (!form.name.trim()) {
+      newErrors.name = "Full name is required";
+    } else if (form.name.trim().length < 2) {
+      newErrors.name = "Name must be at least 2 characters";
+    }
+
+    // Email validation
+    if (!form.email.trim()) {
+      newErrors.email = "Email address is required";
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(form.email)) {
+        newErrors.email = "Please enter a valid email address";
+      }
+    }
+
+    // Subject validation
+    if (!form.subject) {
+      newErrors.subject = "Please select a subject";
+    }
+
+    // Message validation
+    if (!form.message.trim()) {
+      newErrors.message = "Message is required";
+    } else if (form.message.trim().length < 10) {
+      newErrors.message = "Message must be at least 10 characters";
+    }
+
+    // Phone validation (optional but if provided, should be valid)
+    if (form.phone.trim()) {
+      const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+      if (!phoneRegex.test(form.phone.replace(/\s/g, ""))) {
+        newErrors.phone = "Please enter a valid phone number";
+      }
+    }
+
+    return newErrors;
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // In production this would POST to the backend
-    setSubmitted(true);
+
+    // Validate form
+    const formErrors = validateForm();
+    if (Object.keys(formErrors).length > 0) {
+      setErrors(formErrors);
+      toast.error("Please fix the errors below");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setErrors({});
+
+    try {
+      const response = await supportAPI.createTicket({
+        name: form.name.trim(),
+        email: form.email.trim().toLowerCase(),
+        phone: form.phone.trim() || null,
+        subject: form.subject,
+        message: form.message.trim(),
+        source: "contact_page",
+        priority: "medium",
+      });
+
+      if (response.success) {
+        toast.success(
+          "✨ Message sent successfully! We'll get back to you soon.",
+        );
+        setSubmitted(true);
+      } else {
+        toast.error(
+          response.message || "Failed to send message. Please try again.",
+        );
+      }
+    } catch (error) {
+      console.error("Contact form submission error:", error);
+      if (error.response?.status === 429) {
+        toast.error(
+          "Too many requests. Please wait a moment before trying again.",
+        );
+      } else if (error.response?.data?.message) {
+        toast.error(error.response.data.message);
+      } else {
+        toast.error(
+          "Something went wrong. Please try again or contact us directly.",
+        );
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -134,7 +334,14 @@ const Contact = () => {
         structuredData={SCHEMA_CONTACT}
       />
       {/* Hero */}
-      <section className="relative bg-gradient-to-br from-primary-900 via-primary-800 to-secondary-800 text-white py-24 overflow-hidden">
+      <section
+        className="relative bg-gradient-to-br from-primary-900 via-primary-800 to-secondary-800 text-white py-24 overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/Contactimage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
         <div className="absolute inset-0 bg-black/20" />
         <div
           className="absolute top-0 right-0 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl"
@@ -187,7 +394,23 @@ const Contact = () => {
                   <p className="text-sm font-semibold text-neutral-700 mb-4">
                     {channel.value}
                   </p>
-                  {channel.action ? (
+                  {channel.action === "chat" ? (
+                    <button
+                      onClick={() => setIsChatOpen(true)}
+                      className="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+                    >
+                      {channel.actionLabel}{" "}
+                      <Icon name="arrowRight" className="w-4 h-4" />
+                    </button>
+                  ) : channel.action === "directions" ? (
+                    <button
+                      onClick={() => handleGetDirections(channel.coordinates)}
+                      className="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors"
+                    >
+                      {channel.actionLabel}{" "}
+                      <Icon name="arrowRight" className="w-4 h-4" />
+                    </button>
+                  ) : channel.action ? (
                     <a
                       href={channel.action}
                       className="inline-flex items-center gap-1 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors"
@@ -253,6 +476,7 @@ const Contact = () => {
                         subject: "",
                         message: "",
                       });
+                      setErrors({});
                     }}
                   >
                     Send Another Message
@@ -275,9 +499,19 @@ const Contact = () => {
                         required
                         value={form.name}
                         onChange={handleChange}
+                        disabled={isSubmitting}
                         placeholder="Amina Hassan"
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white"
+                        className={`w-full px-4 py-3 border rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white disabled:opacity-50 disabled:cursor-not-allowed ${
+                          errors.name
+                            ? "border-error-300 focus:ring-error-500"
+                            : "border-neutral-200"
+                        }`}
                       />
+                      {errors.name && (
+                        <p className="text-error-600 text-xs mt-1">
+                          {errors.name}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label
@@ -293,9 +527,19 @@ const Contact = () => {
                         required
                         value={form.email}
                         onChange={handleChange}
+                        disabled={isSubmitting}
                         placeholder="amina@example.com"
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white"
+                        className={`w-full px-4 py-3 border rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white disabled:opacity-50 disabled:cursor-not-allowed ${
+                          errors.email
+                            ? "border-error-300 focus:ring-error-500"
+                            : "border-neutral-200"
+                        }`}
                       />
+                      {errors.email && (
+                        <p className="text-error-600 text-xs mt-1">
+                          {errors.email}
+                        </p>
+                      )}
                     </div>
                   </Grid>
 
@@ -313,9 +557,19 @@ const Contact = () => {
                         type="tel"
                         value={form.phone}
                         onChange={handleChange}
+                        disabled={isSubmitting}
                         placeholder="+211 92 000 0000"
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white"
+                        className={`w-full px-4 py-3 border rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white disabled:opacity-50 disabled:cursor-not-allowed ${
+                          errors.phone
+                            ? "border-error-300 focus:ring-error-500"
+                            : "border-neutral-200"
+                        }`}
                       />
+                      {errors.phone && (
+                        <p className="text-error-600 text-xs mt-1">
+                          {errors.phone}
+                        </p>
+                      )}
                     </div>
                     <div>
                       <label
@@ -330,7 +584,12 @@ const Contact = () => {
                         required
                         value={form.subject}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white"
+                        disabled={isSubmitting}
+                        className={`w-full px-4 py-3 border rounded-xl text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white disabled:opacity-50 disabled:cursor-not-allowed ${
+                          errors.subject
+                            ? "border-error-300 focus:ring-error-500"
+                            : "border-neutral-200"
+                        }`}
                       >
                         <option value="">Select a topic…</option>
                         <option value="account">Account Support</option>
@@ -340,6 +599,11 @@ const Contact = () => {
                         <option value="technical">Technical Support</option>
                         <option value="other">Other</option>
                       </select>
+                      {errors.subject && (
+                        <p className="text-error-600 text-xs mt-1">
+                          {errors.subject}
+                        </p>
+                      )}
                     </div>
                   </Grid>
 
@@ -357,18 +621,38 @@ const Contact = () => {
                       rows={5}
                       value={form.message}
                       onChange={handleChange}
+                      disabled={isSubmitting}
                       placeholder="Tell us how we can help you…"
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white resize-none"
+                      className={`w-full px-4 py-3 border rounded-xl text-neutral-900 placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition bg-white resize-none disabled:opacity-50 disabled:cursor-not-allowed ${
+                        errors.message
+                          ? "border-error-300 focus:ring-error-500"
+                          : "border-neutral-200"
+                      }`}
                     />
+                    {errors.message && (
+                      <p className="text-error-600 text-xs mt-1">
+                        {errors.message}
+                      </p>
+                    )}
                   </div>
 
                   <Button
                     type="submit"
                     size="lg"
-                    className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-4"
+                    disabled={isSubmitting}
+                    className="w-full bg-primary-600 hover:bg-primary-700 text-white font-bold py-4 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Icon name="send" className="w-5 h-5 inline mr-2" />
-                    Send Message
+                    {isSubmitting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2" />
+                        Sending...
+                      </>
+                    ) : (
+                      <>
+                        <Icon name="send" className="w-5 h-5 inline mr-2" />
+                        Send Message
+                      </>
+                    )}
                   </Button>
 
                   <p className="text-xs text-neutral-400 text-center">
@@ -432,10 +716,17 @@ const Contact = () => {
                           </p>
                           <a
                             href={`tel:${office.phone.replace(/\s/g, "")}`}
-                            className="text-sm text-primary-600 hover:text-primary-700 font-medium mt-1 inline-block"
+                            className="text-sm text-primary-600 hover:text-primary-700 font-medium mt-1 inline-block mr-4"
                           >
                             {office.phone}
                           </a>
+                          <button
+                            onClick={() => handleOfficeDirections(office)}
+                            className="text-sm text-secondary-600 hover:text-secondary-700 font-medium mt-1 inline-flex items-center gap-1"
+                          >
+                            <Icon name="mapPin" className="w-3 h-3" />
+                            Directions
+                          </button>
                         </div>
                       </div>
                     </CardContent>
@@ -538,9 +829,15 @@ const Contact = () => {
       {/* CTA */}
       <Section
         spacing="lg"
-        className="bg-gradient-to-r from-primary-700 via-primary-600 to-secondary-600 text-white"
+        className="relative text-white overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/Contactimage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
       >
-        <Container>
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/85 via-primary-800/80 to-secondary-900/85" />
+        <Container className="relative z-10">
           <div className="text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Ready to Get Started?
@@ -569,6 +866,9 @@ const Contact = () => {
           </div>
         </Container>
       </Section>
+
+      {/* Live Chat Component */}
+      <LiveChat isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
     </div>
   );
 };

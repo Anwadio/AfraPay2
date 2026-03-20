@@ -256,6 +256,109 @@ router.get(
 );
 
 /**
+ * @route   GET /api/v1/payments/recent
+ * @desc    Return authenticated user's most-recent outgoing transfers (default 10, max 20)
+ * @access  Private
+ */
+router.get(
+  "/recent",
+  authenticate,
+  query("limit")
+    .optional()
+    .isInt({ min: 1, max: 20 })
+    .withMessage("Limit must be between 1 and 20"),
+  validateRequest,
+  asyncHandler((req, res) => paymentController.getRecentTransfers(req, res)),
+);
+
+// Named GET routes must come BEFORE /:paymentId to avoid Express param conflict
+
+// Exchange rates and fees
+
+/**
+ * @route   GET /api/v1/payments/exchange-rates
+ * @desc    Get current exchange rates
+ * @access  Private
+ */
+router.get(
+  "/exchange-rates",
+  authenticate,
+  query("from")
+    .optional()
+    .isIn([
+      "USD",
+      "EUR",
+      "GBP",
+      "NGN",
+      "GHS",
+      "KES",
+      "ZAR",
+      "UGX",
+      "TZS",
+      "ETB",
+      "RWF",
+      "SSP",
+    ])
+    .withMessage("Invalid from currency"),
+  query("to")
+    .optional()
+    .isIn([
+      "USD",
+      "EUR",
+      "GBP",
+      "NGN",
+      "GHS",
+      "KES",
+      "ZAR",
+      "UGX",
+      "TZS",
+      "ETB",
+      "RWF",
+      "SSP",
+    ])
+    .withMessage("Invalid to currency"),
+  validateRequest,
+  asyncHandler(paymentController.getExchangeRates),
+);
+
+/**
+ * @route   GET /api/v1/payments/fees
+ * @desc    Get fee structure
+ * @access  Private
+ */
+router.get(
+  "/fees",
+  authenticate,
+  query("type")
+    .optional()
+    .isIn(["transfer", "withdrawal", "deposit", "conversion"])
+    .withMessage("Invalid fee type"),
+  query("amount")
+    .optional()
+    .isFloat({ min: 0.01 })
+    .withMessage("Amount must be a positive number"),
+  query("currency")
+    .optional()
+    .isIn(["USD", "EUR", "GBP", "NGN", "GHS", "KES", "ZAR"])
+    .withMessage("Invalid currency"),
+  validateRequest,
+  asyncHandler(paymentController.getFees),
+);
+
+// Recurring payments (GET must be before /:paymentId)
+
+/**
+ * @route   GET /api/v1/payments/recurring
+ * @desc    Get recurring payments
+ * @access  Private
+ */
+router.get(
+  "/recurring",
+  authenticate,
+  asyncHandler(paymentController.getRecurringPayments),
+);
+
+/**
  * @route   GET /api/v1/payments/:paymentId
  * @desc    Get payment details
  * @access  Private
@@ -423,52 +526,6 @@ router.put(
   asyncHandler(paymentController.setDefaultPaymentMethod),
 );
 
-// Exchange rates and fees
-
-/**
- * @route   GET /api/v1/payments/exchange-rates
- * @desc    Get current exchange rates
- * @access  Private
- */
-router.get(
-  "/exchange-rates",
-  authenticate,
-  query("from")
-    .optional()
-    .isIn(["USD", "EUR", "GBP", "NGN", "GHS", "KES", "ZAR"])
-    .withMessage("Invalid from currency"),
-  query("to")
-    .optional()
-    .isIn(["USD", "EUR", "GBP", "NGN", "GHS", "KES", "ZAR"])
-    .withMessage("Invalid to currency"),
-  validateRequest,
-  asyncHandler(paymentController.getExchangeRates),
-);
-
-/**
- * @route   GET /api/v1/payments/fees
- * @desc    Get fee structure
- * @access  Private
- */
-router.get(
-  "/fees",
-  authenticate,
-  query("type")
-    .optional()
-    .isIn(["transfer", "withdrawal", "deposit", "conversion"])
-    .withMessage("Invalid fee type"),
-  query("amount")
-    .optional()
-    .isFloat({ min: 0.01 })
-    .withMessage("Amount must be a positive number"),
-  query("currency")
-    .optional()
-    .isIn(["USD", "EUR", "GBP", "NGN", "GHS", "KES", "ZAR"])
-    .withMessage("Invalid currency"),
-  validateRequest,
-  asyncHandler(paymentController.getFees),
-);
-
 // Recurring payments
 
 /**
@@ -496,17 +553,6 @@ router.post(
     .withMessage("Valid end date is required"),
   validateRequest,
   asyncHandler(paymentController.setupRecurringPayment),
-);
-
-/**
- * @route   GET /api/v1/payments/recurring
- * @desc    Get recurring payments
- * @access  Private
- */
-router.get(
-  "/recurring",
-  authenticate,
-  asyncHandler(paymentController.getRecurringPayments),
 );
 
 /**

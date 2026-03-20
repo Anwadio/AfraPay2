@@ -257,7 +257,10 @@ router.delete(
  * @desc    Get security settings
  * @access  Private
  */
-router.get("/security", asyncHandler(profileController.getSecuritySettings));
+router.get(
+  "/security",
+  asyncHandler((req, res) => profileController.getSecuritySettings(req, res)),
+);
 
 /**
  * @route   PUT /api/v1/profile/security
@@ -268,7 +271,9 @@ router.put(
   "/security",
   securitySettingsValidation,
   validateRequest,
-  asyncHandler(profileController.updateSecuritySettings),
+  asyncHandler((req, res) =>
+    profileController.updateSecuritySettings(req, res),
+  ),
 );
 
 // Privacy settings
@@ -389,7 +394,10 @@ router.get(
  * @desc    Get active sessions
  * @access  Private
  */
-router.get("/sessions", asyncHandler(profileController.getActiveSessions));
+router.get(
+  "/sessions",
+  asyncHandler((req, res) => profileController.getActiveSessions(req, res)),
+);
 
 /**
  * @route   DELETE /api/v1/profile/sessions/:sessionId
@@ -400,7 +408,7 @@ router.delete(
   "/sessions/:sessionId",
   param("sessionId").notEmpty().withMessage("Session ID is required"),
   validateRequest,
-  asyncHandler(profileController.revokeSession),
+  asyncHandler((req, res) => profileController.revokeSession(req, res)),
 );
 
 /**
@@ -408,7 +416,10 @@ router.delete(
  * @desc    Revoke all sessions except current
  * @access  Private
  */
-router.delete("/sessions", asyncHandler(profileController.revokeAllSessions));
+router.delete(
+  "/sessions",
+  asyncHandler((req, res) => profileController.revokeAllSessions(req, res)),
+);
 
 // Data export
 

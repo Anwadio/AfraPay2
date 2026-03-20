@@ -117,8 +117,24 @@ const About = () => {
         structuredData={SCHEMA_ABOUT}
       />
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-primary-800 via-primary-700 to-secondary-700 text-white py-16">
-        <Container>
+      <section
+        className="relative text-white py-24 overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/Aboutimage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-900/80 via-primary-800/75 to-secondary-800/80" />
+        <div
+          className="absolute top-0 right-0 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl"
+          aria-hidden="true"
+        />
+        <div
+          className="absolute bottom-0 left-0 w-72 h-72 bg-secondary-500/10 rounded-full blur-2xl"
+          aria-hidden="true"
+        />
+        <Container className="relative">
           <div className="text-center max-w-4xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">
               Empowering Africa's Financial Future
@@ -177,7 +193,10 @@ const About = () => {
       </section>
 
       {/* Values Section */}
-      <section className="py-16 bg-gradient-to-r from-primary-50 to-secondary-50">
+      <section
+        id="values-section"
+        className="py-16 bg-gradient-to-r from-primary-50 to-secondary-50"
+      >
         <Container>
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-neutral-900 mb-4">
@@ -324,10 +343,22 @@ const About = () => {
               create technology that matters.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-8 py-3 rounded-lg font-medium hover:from-primary-700 hover:to-secondary-700 transition-all shadow-md hover:shadow-lg">
+              <a
+                href="/careers"
+                className="inline-block bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-8 py-3 rounded-lg font-medium hover:from-primary-700 hover:to-secondary-700 transition-all shadow-md hover:shadow-lg text-center"
+              >
                 View Open Positions
-              </button>
-              <button className="border border-primary-300 text-primary-700 px-8 py-3 rounded-lg font-medium hover:bg-primary-50 transition-colors">
+              </a>
+              <button
+                onClick={() => {
+                  const valuesSection =
+                    document.querySelector("#values-section");
+                  if (valuesSection) {
+                    valuesSection.scrollIntoView({ behavior: "smooth" });
+                  }
+                }}
+                className="border border-primary-300 text-primary-700 px-8 py-3 rounded-lg font-medium hover:bg-primary-50 transition-colors"
+              >
                 Learn More About Culture
               </button>
             </div>
@@ -336,8 +367,24 @@ const About = () => {
       </section>
 
       {/* Contact CTA */}
-      <section className="py-16 bg-gradient-to-r from-primary-800 via-primary-700 to-secondary-700 text-white">
-        <Container>
+      <section
+        className="relative py-16 text-white overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/Aboutimage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-800/85 via-primary-700/80 to-secondary-700/85" />
+        <div
+          className="absolute top-0 right-0 w-80 h-80 bg-primary-500/10 rounded-full blur-3xl"
+          aria-hidden="true"
+        />
+        <div
+          className="absolute bottom-0 left-0 w-64 h-64 bg-secondary-500/10 rounded-full blur-2xl"
+          aria-hidden="true"
+        />
+        <Container className="relative">
           <div className="text-center max-w-3xl mx-auto">
             <h2 className="text-3xl font-bold mb-4">Get in Touch</h2>
             <p className="text-xl text-primary-100 mb-8">
@@ -345,12 +392,18 @@ const About = () => {
               love to hear from you.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="bg-white text-primary-700 px-8 py-3 rounded-lg font-medium hover:bg-primary-50 transition-colors shadow-sm">
+              <a
+                href="mailto:sales@afrapayafrica.com?subject=Sales Inquiry&body=Hi AfraPay Team,%0A%0AI'm interested in learning more about your payment solutions for my business.%0A%0APlease get in touch with me.%0A%0AThank you!"
+                className="inline-block bg-white text-primary-700 px-8 py-3 rounded-lg font-medium hover:bg-primary-50 transition-colors shadow-sm text-center"
+              >
                 Contact Sales
-              </button>
-              <button className="border border-white/50 text-white px-8 py-3 rounded-lg font-medium hover:bg-white/10 transition-colors">
+              </a>
+              <a
+                href="mailto:hello@afrapayafrica.com?subject=General Inquiry&body=Hello AfraPay Team,%0A%0AI have a question about your services.%0A%0A%0A%0AThank you!"
+                className="inline-block border border-white/50 text-white px-8 py-3 rounded-lg font-medium hover:bg-white/10 transition-colors text-center"
+              >
                 Send Message
-              </button>
+              </a>
             </div>
           </div>
         </Container>

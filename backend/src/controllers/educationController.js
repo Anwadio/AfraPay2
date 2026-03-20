@@ -287,13 +287,11 @@ class EducationController {
       title,
     });
 
-    res
-      .status(201)
-      .json({
-        success: true,
-        data: doc,
-        message: "Content created successfully",
-      });
+    res.status(201).json({
+      success: true,
+      data: doc,
+      message: "Content created successfully",
+    });
   }
 
   // ── PUT /education/content/:contentId (admin) ─────────────────────────────
@@ -820,13 +818,11 @@ class EducationController {
       pathId,
       enrolmentId: enrolment.$id,
     });
-    res
-      .status(201)
-      .json({
-        success: true,
-        data: enrolment,
-        message: "Enrolled successfully",
-      });
+    res.status(201).json({
+      success: true,
+      data: enrolment,
+      message: "Enrolled successfully",
+    });
   }
 
   // ── DELETE /education/paths/:pathId/enroll ────────────────────────────────
@@ -1162,6 +1158,111 @@ class EducationController {
     });
   }
 
+  // ── GET /education/my-stats ───────────────────────────────────────────────
+  async getUserStats(req, res) {
+    const userId = uid(req);
+
+    // Gather data in parallel – gracefully degrade if collections missing
+    const [progressRes, contentEnrRes, pathEnrRes] = await Promise.allSettled([
+      COL.progress()
+        ? _db.listDocuments(DB(), COL.progress(), [
+            Query.equal("userId", userId),
+            Query.limit(500),
+          ])
+        : Promise.resolve({ documents: [], total: 0 }),
+      COL.enrollments()
+        ? _db.listDocuments(DB(), COL.enrollments(), [
+            Query.equal("userId", userId),
+            Query.equal("type", "content"),
+            Query.limit(200),
+          ])
+        : Promise.resolve({ documents: [], total: 0 }),
+      COL.enrollments()
+        ? _db.listDocuments(DB(), COL.enrollments(), [
+            Query.equal("userId", userId),
+            Query.equal("type", "path"),
+            Query.limit(100),
+          ])
+        : Promise.resolve({ documents: [], total: 0 }),
+    ]);
+
+    const progressDocs =
+      progressRes.status === "fulfilled" ? progressRes.value.documents : [];
+    const contentEnrDocs =
+      contentEnrRes.status === "fulfilled" ? contentEnrRes.value.documents : [];
+    const pathEnrDocs =
+      pathEnrRes.status === "fulfilled" ? pathEnrRes.value.documents : [];
+
+    // Total learning hours — sum all timeSpentSeconds from progress records
+    const totalSeconds = progressDocs.reduce(
+      (sum, d) => sum + (d.timeSpentSeconds || 0),
+      0,
+    );
+    const totalHours = Math.round((totalSeconds / 3600) * 10) / 10; // 1 decimal
+
+    // Completed lessons — content enrollments marked completed
+    const completedLessons = contentEnrDocs.filter(
+      (e) => e.status === "completed",
+    ).length;
+
+    // Enrolled paths
+    const enrolledPaths = pathEnrDocs.length;
+
+    // Day streak — collect all unique activity dates from progress + enrollments
+    const activityDates = new Set();
+    const addDate = (isoString) => {
+      if (!isoString) return;
+      try {
+        activityDates.add(isoString.slice(0, 10)); // YYYY-MM-DD
+      } catch {
+        /* ignore */
+      }
+    };
+    progressDocs.forEach((d) => {
+      addDate(d.updatedAt);
+      addDate(d.completedAt);
+    });
+    contentEnrDocs.forEach((e) => addDate(e.lastAccessedAt));
+    pathEnrDocs.forEach((e) => addDate(e.lastActivityAt));
+
+    // Sort dates descending and count consecutive days
+    const sortedDates = Array.from(activityDates).sort((a, b) =>
+      b.localeCompare(a),
+    );
+    let streak = 0;
+    if (sortedDates.length > 0) {
+      const today = new Date().toISOString().slice(0, 10);
+      const yesterday = new Date(Date.now() - 86400000)
+        .toISOString()
+        .slice(0, 10);
+      // Streak only counts if there is activity today or yesterday
+      if (sortedDates[0] === today || sortedDates[0] === yesterday) {
+        streak = 1;
+        let prev = new Date(sortedDates[0]);
+        for (let i = 1; i < sortedDates.length; i++) {
+          const curr = new Date(sortedDates[i]);
+          const diffDays = Math.round((prev - curr) / 86400000);
+          if (diffDays === 1) {
+            streak++;
+            prev = curr;
+          } else {
+            break;
+          }
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        enrolledPaths,
+        completedLessons,
+        totalHours,
+        streak,
+      },
+    });
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   // PRIVATE HELPERS
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1186,6 +1287,187 @@ class EducationController {
     }
 
     return out;
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // INDIVIDUAL CONTENT ENROLLMENT
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // ── POST /education/content/:contentId/enroll ────────────────────────────
+  async enrollInContent(req, res) {
+    requireCollection(COL.content(), "content");
+    requireCollection(COL.enrollments(), "enrollments");
+
+    const { contentId } = req.params;
+    const userId = uid(req);
+
+    let content;
+    try {
+      content = await _db.getDocument(DB(), COL.content(), contentId);
+    } catch {
+      throw new NotFoundError("Content item");
+    }
+
+    if (content.status !== "published") throw new NotFoundError("Content item");
+
+    if (
+      content.isPremium &&
+      !["premium", "admin", "super_admin"].includes(req.user?.role)
+    ) {
+      throw new AuthorizationError(
+        "This content requires a premium membership.",
+      );
+    }
+
+    // Idempotent: check existing enrollment
+    const existing = await _db.listDocuments(DB(), COL.enrollments(), [
+      Query.equal("userId", userId),
+      Query.equal("contentId", contentId),
+      Query.equal("type", "content"),
+      Query.limit(1),
+    ]);
+
+    if (existing.total > 0) {
+      return res.json({
+        success: true,
+        data: existing.documents[0],
+        message: "Already enrolled in this content",
+      });
+    }
+
+    const enrollment = await _db.createDocument(
+      DB(),
+      COL.enrollments(),
+      ID.unique(),
+      {
+        userId,
+        contentId,
+        type: "content",
+        status: "in-progress",
+        progress: 0,
+        enrolledAt: new Date().toISOString(),
+        lastAccessedAt: new Date().toISOString(),
+      },
+    );
+
+    logger.audit("EDUCATION_CONTENT_ENROLLED", userId, {
+      contentId,
+      enrollmentId: enrollment.$id,
+    });
+
+    res.status(201).json({
+      success: true,
+      data: enrollment,
+      message: "Enrolled successfully",
+    });
+  }
+
+  // ── DELETE /education/content/:contentId/enroll ───────────────────────────
+  async unenrollFromContent(req, res) {
+    requireCollection(COL.enrollments(), "enrollments");
+
+    const { contentId } = req.params;
+    const userId = uid(req);
+
+    const existing = await _db.listDocuments(DB(), COL.enrollments(), [
+      Query.equal("userId", userId),
+      Query.equal("contentId", contentId),
+      Query.equal("type", "content"),
+      Query.limit(1),
+    ]);
+
+    if (existing.total === 0) throw new NotFoundError("Enrollment");
+
+    await _db.deleteDocument(
+      DB(),
+      COL.enrollments(),
+      existing.documents[0].$id,
+    );
+
+    logger.audit("EDUCATION_CONTENT_UNENROLLED", userId, { contentId });
+    res.json({ success: true, message: "Unenrolled successfully" });
+  }
+
+  // ── POST /education/content/:contentId/complete ───────────────────────────
+  async markContentComplete(req, res) {
+    requireCollection(COL.enrollments(), "enrollments");
+
+    const { contentId } = req.params;
+    const userId = uid(req);
+
+    const existing = await _db.listDocuments(DB(), COL.enrollments(), [
+      Query.equal("userId", userId),
+      Query.equal("contentId", contentId),
+      Query.equal("type", "content"),
+      Query.limit(1),
+    ]);
+
+    if (existing.total === 0) {
+      throw new ValidationError(
+        "You must be enrolled in this content to mark it as complete",
+      );
+    }
+
+    const enrollment = existing.documents[0];
+    const now = new Date().toISOString();
+
+    const updated = await _db.updateDocument(
+      DB(),
+      COL.enrollments(),
+      enrollment.$id,
+      {
+        status: "completed",
+        progress: 100,
+        completedAt: now,
+        lastAccessedAt: now,
+      },
+    );
+
+    logger.audit("EDUCATION_CONTENT_COMPLETED", userId, { contentId });
+    res.json({
+      success: true,
+      data: updated,
+      message: "Content marked as complete",
+    });
+  }
+
+  // ── GET /education/my-content ─────────────────────────────────────────────
+  async getMyContentEnrollments(req, res) {
+    requireCollection(COL.enrollments(), "enrollments");
+
+    const userId = uid(req);
+    const { status } = req.query;
+
+    const queries = [
+      Query.equal("userId", userId),
+      Query.equal("type", "content"),
+      Query.orderDesc("lastAccessedAt"),
+      Query.limit(50),
+    ];
+    if (status) queries.push(Query.equal("status", status));
+
+    const result = await _db.listDocuments(DB(), COL.enrollments(), queries);
+
+    // Hydrate each enrollment with content metadata
+    const enriched = await Promise.all(
+      result.documents.map(async (enrollment) => {
+        let contentData = null;
+        try {
+          contentData = await _db.getDocument(
+            DB(),
+            COL.content(),
+            enrollment.contentId,
+          );
+          // Strip large fields to save bandwidth
+          delete contentData.body;
+        } catch {
+          /* content may have been deleted */
+        }
+        return { ...enrollment, content: contentData };
+      }),
+    );
+
+    res.json({ success: true, data: enriched });
   }
 
   /**

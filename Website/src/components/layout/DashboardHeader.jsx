@@ -4,6 +4,8 @@ import { cn } from "../../utils";
 import { useAuth } from "../../contexts/AuthContext";
 import { Button, Avatar } from "../ui";
 import { notificationsAPI, transactionAPI } from "../../services/api";
+import LanguageSwitcher from "../common/LanguageSwitcher";
+import { useTranslation } from "../../utils/accessibility";
 
 /**
  * Enhanced Fintech Dashboard Header
@@ -19,6 +21,7 @@ const DashboardHeader = ({
 }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const { t } = useTranslation();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -184,7 +187,9 @@ const DashboardHeader = ({
   // Relative time helper
   const relativeTime = (isoString) => {
     if (!isoString) return "";
-    const diff = Date.now() - new Date(isoString).getTime();
+    const ts = new Date(isoString).getTime();
+    if (isNaN(ts)) return "";
+    const diff = Date.now() - ts;
     const mins = Math.floor(diff / 60_000);
     if (mins < 1) return "just now";
     if (mins < 60) return `${mins} min ago`;
@@ -217,12 +222,16 @@ const DashboardHeader = ({
 
   // ── Quick-nav links always available in results ─────────────────────────────
   const NAV_LINKS = [
-    { label: "Dashboard", path: "/dashboard", icon: "home" },
-    { label: "Transactions", path: "/transactions", icon: "list" },
-    { label: "Education Hub", path: "/education", icon: "book" },
-    { label: "Profile", path: "/profile", icon: "user" },
-    { label: "Settings", path: "/settings", icon: "cog" },
-    { label: "Help & Support", path: "/help", icon: "help" },
+    { label: t("navigation.dashboard"), path: "/dashboard", icon: "home" },
+    {
+      label: t("navigation.transactions"),
+      path: "/transactions",
+      icon: "list",
+    },
+    { label: t("navigation.educationHub"), path: "/education", icon: "book" },
+    { label: t("navigation.profile"), path: "/profile", icon: "user" },
+    { label: t("navigation.settings"), path: "/settings", icon: "cog" },
+    { label: t("navigation.help"), path: "/help", icon: "help" },
   ];
 
   const navIcon = (icon) => {
@@ -411,7 +420,7 @@ const DashboardHeader = ({
                   onFocus={() =>
                     searchQuery.trim() && setSearchResults((r) => r)
                   }
-                  placeholder="Search transactions, pages..."
+                  placeholder={t("transactions.search")}
                   autoComplete="off"
                   className={cn(
                     "w-56 lg:w-80 pl-10 pr-8 py-2 text-sm",
@@ -688,6 +697,9 @@ const DashboardHeader = ({
             </svg>
           </Button>
         </div>
+
+        {/* Language Switcher */}
+        <LanguageSwitcher variant="compact" syncBackend />
 
         {/* Notifications */}
         {showNotifications && (

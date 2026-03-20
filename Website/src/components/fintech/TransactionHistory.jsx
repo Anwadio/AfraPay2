@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { cn } from "../../utils";
+import { formatCurrencyAmount } from "../../utils/currency";
 import { Button, Badge } from "../ui";
 import { DashboardCard, DashboardGrid } from "../layout/DashboardUtils";
 
@@ -147,8 +148,7 @@ const BalanceCard = ({
           </div>
           <div className="space-y-1">
             <p className="text-2xl font-bold text-primary-900 currency">
-              {currency}{" "}
-              {amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              {formatCurrencyAmount(amount, currency)}
             </p>
             {change && (
               <p
@@ -536,17 +536,12 @@ const TransactionItem = ({ transaction }) => {
           )}
         >
           {transaction.type === "received" ? "+" : "-"}
-          {transaction.currency}{" "}
-          {transaction.amount.toLocaleString("en-US", {
-            minimumFractionDigits: 2,
-          })}
+          {formatCurrencyAmount(transaction.amount, transaction.currency)}
         </p>
         {transaction.balance != null && (
           <p className="text-xs text-primary-600 mt-1">
-            Balance: {transaction.currency}{" "}
-            {transaction.balance.toLocaleString("en-US", {
-              minimumFractionDigits: 2,
-            })}
+            Balance:{" "}
+            {formatCurrencyAmount(transaction.balance, transaction.currency)}
           </p>
         )}
       </td>

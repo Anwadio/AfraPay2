@@ -1,5 +1,6 @@
 /* eslint-disable no-unused-vars */
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   TrendingUp,
@@ -23,6 +24,8 @@ import {
   BarChart2,
 } from "lucide-react";
 import { cn } from "../../utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { formatCurrencyAmount } from "../../utils/currency";
 import { Button, Badge } from "../ui";
 import {
   DashboardCard,
@@ -250,10 +253,11 @@ const FinanceTransactionItem = ({
     }
   };
 
+  const { currency: displayCurrency } = useCurrency();
   const formatAmount = (amount, type) => {
     const prefix = type === "received" ? "+" : type === "sent" ? "-" : "";
-    const currency = transaction?.currency || "USD";
-    return `${prefix}${currency} ${Math.abs(amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const txCurrency = transaction?.currency || displayCurrency;
+    return `${prefix}${formatCurrencyAmount(Math.abs(amount || 0), txCurrency)}`;
   };
 
   const getStatusConfig = (status) => {
@@ -462,6 +466,7 @@ const FinanceAccountCard = ({
  * Quick Actions Grid — premium icon tiles with spring animations
  */
 const FinanceQuickActions = ({ actions = [], className, ...props }) => {
+  const navigate = useNavigate();
   const defaultActions = [
     { id: "send", label: "Send", Icon: Send, color: "blue", href: "/send" },
     {
@@ -525,9 +530,7 @@ const FinanceQuickActions = ({ actions = [], className, ...props }) => {
               colorMap[action.color] || colorMap.blue,
             )}
             onClick={() =>
-              action.onClick
-                ? action.onClick()
-                : (window.location.href = action.href)
+              action.onClick ? action.onClick() : navigate(action.href)
             }
           >
             <div className="w-9 h-9 flex items-center justify-center">

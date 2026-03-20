@@ -65,6 +65,7 @@ const CERTIFICATIONS = [
     body: "Payment Card Industry",
     description:
       "The highest level of certification for payment processors worldwide.",
+    image: "/certificationimages/PCIimage.png",
   },
   {
     badge: "🔒",
@@ -72,6 +73,7 @@ const CERTIFICATIONS = [
     body: "International Organization for Standardization",
     description:
       "Internationally recognised information security management standard.",
+    image: "/certificationimages/ISOimage.png",
   },
   {
     badge: "🏦",
@@ -79,6 +81,7 @@ const CERTIFICATIONS = [
     body: "Central Bank License",
     description:
       "Fully licensed and regulated by the central bank of South Sudan.",
+    image: "/certificationimages/Bankimage.png",
   },
   {
     badge: "✅",
@@ -86,6 +89,7 @@ const CERTIFICATIONS = [
     body: "AICPA",
     description:
       "Annual audit of our security, availability, and confidentiality controls.",
+    image: "/certificationimages/SOC2image.png",
   },
   {
     badge: "🌍",
@@ -93,12 +97,14 @@ const CERTIFICATIONS = [
     body: "EU Data Protection",
     description:
       "Your personal data is handled in full compliance with GDPR principles.",
+    image: "/certificationimages/GDPRimage.png",
   },
   {
     badge: "🛡️",
     name: "FDIC Insured",
     body: "Up to $250,000",
     description: "User funds are held in FDIC-insured partner bank accounts.",
+    image: "/certificationimages/FDCIimage.png",
   },
 ];
 
@@ -133,7 +139,7 @@ const HOW_WE_PROTECT = [
 const FAQS = [
   {
     q: "What happens if I notice an unauthorised transaction?",
-    a: "Contact us immediately via in-app chat, email (support@afrapay.com), or call +211 92 000 0000. We will freeze your account, investigate within 24 hours, and reverse any fraudulent charges.",
+    a: "Contact us immediately via in-app chat, email (support@afrapayafrica.com), or call +211 92 000 0000. We will freeze your account, investigate within 24 hours, and reverse any fraudulent charges.",
   },
   {
     q: "Can AfraPay employees see my PIN or password?",
@@ -166,7 +172,14 @@ const Security = () => {
         structuredData={SCHEMA_SECURITY}
       />
       {/* Hero */}
-      <section className="relative bg-gradient-to-br from-primary-900 via-primary-800 to-secondary-800 text-white py-24 overflow-hidden">
+      <section
+        className="relative bg-gradient-to-br from-primary-900 via-primary-800 to-secondary-800 text-white py-24 overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/SecurityImage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
         <div className="absolute inset-0 bg-black/20" />
         <div
           className="absolute top-0 right-0 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl"
@@ -318,23 +331,27 @@ const Security = () => {
             {CERTIFICATIONS.map((cert) => (
               <Card
                 key={cert.name}
-                className="p-6 border-neutral-100 hover:shadow-md hover:border-success-200 transition-all"
+                className="group p-6 border-neutral-100 hover:shadow-xl hover:border-success-200 hover:scale-105 transition-all duration-300 cursor-pointer overflow-hidden relative"
               >
                 <CardContent>
                   <div className="flex items-start gap-4">
-                    <div className="text-3xl flex-shrink-0">{cert.badge}</div>
-                    <div>
-                      <h4 className="font-bold text-neutral-900 mb-0.5">
+                    <div
+                      className="w-16 h-16 flex-shrink-0 rounded-xl bg-center bg-cover bg-no-repeat shadow-md group-hover:shadow-lg transition-all duration-300"
+                      style={{ backgroundImage: `url('${cert.image}')` }}
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-bold text-neutral-900 mb-0.5 group-hover:text-success-700 transition-colors duration-300">
                         {cert.name}
                       </h4>
-                      <p className="text-xs text-primary-600 font-semibold mb-2">
+                      <p className="text-xs text-primary-600 font-semibold mb-2 group-hover:text-primary-700 transition-colors duration-300">
                         {cert.body}
                       </p>
-                      <p className="text-sm text-neutral-500 leading-relaxed">
+                      <p className="text-sm text-neutral-500 leading-relaxed group-hover:text-neutral-600 transition-colors duration-300">
                         {cert.description}
                       </p>
                     </div>
                   </div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-success-50/0 to-success-50/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                 </CardContent>
               </Card>
             ))}
@@ -343,12 +360,27 @@ const Security = () => {
       </Section>
 
       {/* Responsible disclosure */}
-      <Section spacing="lg" className="bg-primary-50">
-        <Container>
-          <Card className="p-8 md:p-12 border-primary-100 bg-white max-w-3xl mx-auto text-center">
+      <Section
+        spacing="lg"
+        className="relative overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/SecurityImage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-primary-900/75" />
+        <Container className="relative z-10">
+          <Card className="p-8 md:p-12 border-white/20 bg-white/95 backdrop-blur-sm max-w-3xl mx-auto text-center shadow-xl">
             <CardContent>
               <div className="w-16 h-16 bg-warning-100 text-warning-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Icon name="alertTriangle" className="w-8 h-8" />
+                <svg
+                  className="w-8 h-8"
+                  fill="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path d="M12 2L1 21h22L12 2zm0 3.99L19.53 19H4.47L12 5.99zM11 16h2v2h-2v-2zm0-6h2v4h-2v-4z" />
+                </svg>
               </div>
               <h2 className="text-2xl font-bold text-neutral-900 mb-3">
                 Found a Security Vulnerability?
@@ -359,13 +391,13 @@ const Security = () => {
                 We respond to all reports within 24 hours and reward valid
                 findings.
               </p>
-              <a href="mailto:security@afrapay.com">
+              <a href="mailto:security@afrapayafrica.com">
                 <Button
                   size="lg"
                   className="bg-warning-500 hover:bg-warning-600 text-white font-bold"
                 >
                   <Icon name="mail" className="w-5 h-5 inline mr-2" />
-                  security@afrapay.com
+                  security@afrapayafrica.com
                 </Button>
               </a>
             </CardContent>
@@ -421,9 +453,15 @@ const Security = () => {
       {/* CTA */}
       <Section
         spacing="lg"
-        className="bg-gradient-to-r from-primary-700 via-primary-600 to-secondary-600 text-white"
+        className="relative text-white overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/SecurityImage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
       >
-        <Container>
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/85 via-primary-800/80 to-secondary-900/85" />
+        <Container className="relative z-10">
           <div className="text-center">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
               Bank with Confidence

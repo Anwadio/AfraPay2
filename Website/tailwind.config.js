@@ -1,6 +1,8 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   darkMode: "class",
+  // Enable RTL variant so we can write rtl:flex-row-reverse, rtl:text-right, etc.
+  // when dir="rtl" is set on <html>
   content: ["./src/**/*.{js,jsx,ts,tsx}", "./public/index.html"],
   theme: {
     extend: {

@@ -95,8 +95,15 @@ const Pricing = () => {
         keywords="AfraPay pricing, payment plans Africa, fintech pricing, affordable transfers, enterprise payments"
         structuredData={SCHEMA_PRICING}
       />
-      {/* Hero Section */}}
-      <section className="bg-gradient-to-r from-primary-800 via-primary-700 to-secondary-700 text-white py-16">
+      {/* Hero Section */}
+      <section
+        className="bg-gradient-to-r from-primary-800 via-primary-700 to-secondary-700 text-white py-16"
+        style={{
+          backgroundImage: "url('/Carouselimages/PricingImage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
         <Container>
           <div className="text-center max-w-3xl mx-auto">
             <h1 className="text-4xl md:text-5xl font-bold mb-6">

@@ -206,9 +206,15 @@ class AfrPayServer {
       transports: ["websocket", "polling"],
     });
 
-    // WebSocket authentication — reuse the same JWT verification as HTTP
-    const { authenticateWebSocket } = require("./middleware/auth/authenticate");
-    this.io.use(authenticateWebSocket);
+    // WebSocket authentication — use optional auth for chat (allows guests)
+    const {
+      optionalAuthenticateWebSocket,
+    } = require("./middleware/auth/authenticate");
+    this.io.use(optionalAuthenticateWebSocket);
+
+    // Initialize chat WebSocket handler
+    const ChatWebSocketHandler = require("./services/chatWebSocket");
+    this.chatHandler = new ChatWebSocketHandler(this.io);
 
     this.io.on("connection", (socket) => {
       logger.info("WebSocket client connected", {

@@ -5,8 +5,8 @@ import { SCHEMA_PRIVACY } from "../components/seo/schemas";
 
 const EFFECTIVE_DATE = "March 13, 2026";
 const COMPANY_NAME = "AfraPay Africa Limited";
-const SUPPORT_EMAIL = "privacy@afrapay.com";
-const WEBSITE = "www.afrapay.com";
+const SUPPORT_EMAIL = "privacy@afrapayafrica.com";
+const WEBSITE = "www.afrapayafrica.com";
 
 const Section = ({ id, title, children }) => (
   <section id={id} className="mb-10">
@@ -48,8 +48,16 @@ const PrivacyPolicy = () => {
         structuredData={SCHEMA_PRIVACY}
       />
       {/* Hero */}
-      <div className="bg-primary-700 text-white py-14 px-4">
-        <div className="max-w-4xl mx-auto text-center">
+      <div
+        className="relative text-white py-14 px-4 overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/PrivacyImage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-primary-900/75" />
+        <div className="max-w-4xl mx-auto text-center relative z-10">
           <h1 className="text-3xl md:text-4xl font-bold mb-3">
             Privacy Policy
           </h1>

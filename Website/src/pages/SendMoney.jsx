@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useState, useCallback, useRef, useId } from "react";
+import React, { useState, useCallback, useRef, useId, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Send,
@@ -129,49 +129,56 @@ const STEPS = {
   RESULT: "result",
 };
 
-/* ── Demo recent transfers ───────────────────────────────────────────────── */
-const DEMO_RECENT = [
-  {
-    id: 1,
-    name: "Kofi Mensah",
-    phone: "+233201234567",
-    provider: "MTN MoMo",
-    amount: 150,
-    currency: "GHS",
-    date: "Mar 12, 2026",
-    status: "success",
+/* ── Transfer status config ──────────────────────────────────────────────── */
+const STATUS_CONFIG = {
+  completed: {
+    label: "Sent",
+    variant: "success",
+    amountClass: "text-red-500",
+    prefix: "\u2212",
   },
-  {
-    id: 2,
-    name: "Amina Hassan",
-    phone: "+254712345678",
-    provider: "M-Pesa",
-    amount: 2000,
-    currency: "KES",
-    date: "Mar 10, 2026",
-    status: "success",
+  failed: {
+    label: "Failed",
+    variant: "danger",
+    amountClass: "text-neutral-400",
+    prefix: "",
   },
-  {
-    id: 3,
-    name: "David Okafor",
-    phone: "+2348012345678",
-    provider: "AfraPay Wallet",
-    amount: 50,
-    currency: "USD",
-    date: "Mar 8, 2026",
-    status: "failed",
+  pending: {
+    label: "Pending",
+    variant: "warning",
+    amountClass: "text-neutral-400",
+    prefix: "",
   },
-  {
-    id: 4,
-    name: "Fatou Diallo",
-    phone: "+221771234567",
-    provider: "MTN MoMo",
-    amount: 75,
-    currency: "XOF",
-    date: "Mar 5, 2026",
-    status: "success",
+  processing: {
+    label: "Processing",
+    variant: "warning",
+    amountClass: "text-neutral-400",
+    prefix: "",
   },
-];
+};
+
+function formatRelativeDate(isoString) {
+  if (!isoString) return "";
+  try {
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24) return `${diffHours}h ago`;
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  } catch {
+    return "";
+  }
+}
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
 function formatCurrency(amount, currency) {
@@ -287,6 +294,104 @@ function ReviewRow({ label, value, accent }) {
   );
 }
 
+/* ── TransferItem ────────────────────────────────────────────────────────── */
+function TransferItem({ transfer }) {
+  const config = STATUS_CONFIG[transfer.status] || STATUS_CONFIG.pending;
+  const providerLabel =
+    PROVIDERS.find((p) => p.id === transfer.provider)?.label ||
+    transfer.provider;
+  return (
+    <div
+      className={cn(
+        "flex items-center gap-3 p-3 rounded-xl",
+        "bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors",
+      )}
+    >
+      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
+        <User className="w-4 h-4 text-white" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 truncate">
+          {transfer.recipient}
+        </p>
+        <p className="text-xs text-neutral-400 truncate">
+          {providerLabel} · {formatRelativeDate(transfer.createdAt)}
+        </p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className={cn("text-sm font-bold", config.amountClass)}>
+          {config.prefix}
+          {formatCurrency(transfer.amount, transfer.currency)}
+        </p>
+        <Badge variant={config.variant} size="sm">
+          {config.label}
+        </Badge>
+      </div>
+    </div>
+  );
+}
+
+/* ── TransferList ────────────────────────────────────────────────────────── */
+function TransferList({ transfers, loading, error, onRetry }) {
+  if (loading) {
+    return (
+      <div className="space-y-2">
+        {[0, 1, 2].map((i) => (
+          <div
+            key={i}
+            className="flex items-center gap-3 p-3 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 animate-pulse"
+          >
+            <div className="w-9 h-9 rounded-full bg-neutral-200 dark:bg-neutral-700 shrink-0" />
+            <div className="flex-1 space-y-1.5">
+              <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-2/3" />
+              <div className="h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded w-1/2" />
+            </div>
+            <div className="space-y-1.5 text-right shrink-0">
+              <div className="h-3 bg-neutral-200 dark:bg-neutral-700 rounded w-16" />
+              <div className="h-2.5 bg-neutral-200 dark:bg-neutral-700 rounded w-10 ml-auto" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-6 text-center">
+        <AlertCircle className="w-6 h-6 text-red-400" />
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          {error}
+        </p>
+        <button
+          type="button"
+          onClick={onRetry}
+          className="text-xs text-blue-500 hover:underline focus:outline-none"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (transfers.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-2 py-6 text-center">
+        <Repeat2 className="w-6 h-6 text-neutral-300 dark:text-neutral-600" />
+        <p className="text-xs text-neutral-400">No recent transfers yet.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {transfers.map((tx) => (
+        <TransferItem key={tx.id} transfer={tx} />
+      ))}
+    </div>
+  );
+}
+
 /* ── SendMoneyForm (inline, full-page) ──────────────────────────────────── */
 function SendMoneyForm({ onSuccess }) {
   const idPrefix = useId();
@@ -363,7 +468,23 @@ function SendMoneyForm({ onSuccess }) {
           : { receiverPhone: phone.trim() }),
       };
       const res = await paymentAPI.sendMoney(payload, idempotencyKey.current);
-      setResult({ success: true, data: res?.data || res });
+      const sendResult = res?.data || res;
+      setResult({ success: true, data: sendResult });
+      onSuccess({
+        id: sendResult?.transactionId || `tmp-${Date.now()}`,
+        recipient:
+          accountName.trim() ||
+          (isBankProvider(provider) || isStripeProvider(provider)
+            ? maskAccount(accountNumber)
+            : maskPhone(phone)) ||
+          "\u2014",
+        provider,
+        amount: parsedAmount,
+        currency,
+        status: sendResult?.status || "processing",
+        description: description.trim() || null,
+        createdAt: sendResult?.createdAt || new Date().toISOString(),
+      });
     } catch (err) {
       const msg =
         err?.response?.data?.message ||
@@ -857,6 +978,35 @@ function SendMoneyForm({ onSuccess }) {
 const SendMoney = () => {
   const { user } = useAuth();
 
+  const [recentTransfers, setRecentTransfers] = useState([]);
+  const [transfersLoading, setTransfersLoading] = useState(true);
+  const [transfersError, setTransfersError] = useState(null);
+
+  const fetchRecentTransfers = useCallback(async () => {
+    setTransfersLoading(true);
+    setTransfersError(null);
+    try {
+      const res = await paymentAPI.getRecentTransfers(10);
+      setRecentTransfers(res?.data?.transfers || []);
+    } catch (err) {
+      setTransfersError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Failed to load recent transfers.",
+      );
+    } finally {
+      setTransfersLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRecentTransfers();
+  }, [fetchRecentTransfers]);
+
+  const handleTransferSuccess = useCallback((newTx) => {
+    setRecentTransfers((prev) => [newTx, ...prev].slice(0, 10));
+  }, []);
+
   const dashboardUser = {
     name: user?.name || user?.email || "User",
     email: user?.email || "",
@@ -880,7 +1030,7 @@ const SendMoney = () => {
           {/* Send form — takes up most space */}
           <div className="lg:col-span-3">
             <AnimatedSection delay={0.05}>
-              <SendMoneyForm onSuccess={() => {}} />
+              <SendMoneyForm onSuccess={handleTransferSuccess} />
             </AnimatedSection>
           </div>
 
@@ -908,52 +1058,18 @@ const SendMoney = () => {
             <AnimatedSection delay={0.11}>
               <DashboardSection
                 title="Recent Transfers"
-                description="Your last 4 outgoing transactions"
+                description={
+                  recentTransfers.length > 0
+                    ? `${recentTransfers.length} outgoing transfer${recentTransfers.length !== 1 ? "s" : ""}`
+                    : "Your recent outgoing transfers"
+                }
               >
-                <div className="space-y-2">
-                  {DEMO_RECENT.map((tx) => (
-                    <div
-                      key={tx.id}
-                      className={cn(
-                        "flex items-center gap-3 p-3 rounded-xl",
-                        "bg-neutral-50 dark:bg-neutral-800/50 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors",
-                      )}
-                    >
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shrink-0">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-neutral-800 dark:text-neutral-100 truncate">
-                          {tx.name}
-                        </p>
-                        <p className="text-xs text-neutral-400 truncate">
-                          {tx.provider} · {tx.date}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p
-                          className={cn(
-                            "text-sm font-bold",
-                            tx.status === "success"
-                              ? "text-red-500"
-                              : "text-neutral-400",
-                          )}
-                        >
-                          {tx.status === "success" ? "−" : ""}
-                          {formatCurrency(tx.amount, tx.currency)}
-                        </p>
-                        <Badge
-                          variant={
-                            tx.status === "success" ? "success" : "danger"
-                          }
-                          size="sm"
-                        >
-                          {tx.status === "success" ? "Sent" : "Failed"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <TransferList
+                  transfers={recentTransfers}
+                  loading={transfersLoading}
+                  error={transfersError}
+                  onRetry={fetchRecentTransfers}
+                />
               </DashboardSection>
             </AnimatedSection>
 

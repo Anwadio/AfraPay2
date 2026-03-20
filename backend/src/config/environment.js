@@ -84,7 +84,13 @@ const envSchema = Joi.object({
   APPWRITE_NEWSLETTER_COLLECTION_ID: Joi.string().allow("").default(""),
   APPWRITE_SUPPORT_TICKETS_COLLECTION_ID: Joi.string().allow("").default(""),
   APPWRITE_SUPPORT_MESSAGES_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_CHAT_SESSIONS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_CHAT_MESSAGES_COLLECTION_ID: Joi.string().allow("").default(""),
   APPWRITE_NOTIFICATIONS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_CAREERS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_APPLICATIONS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_BLOG_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_USER_CARDS_COLLECTION_ID: Joi.string().allow("").default(""),
 
   // Redis Configuration
   REDIS_HOST: Joi.string().default("localhost"),
@@ -273,7 +279,12 @@ const config = {
         env.APPWRITE_SUPPORT_TICKETS_COLLECTION_ID || "",
       supportMessagesCollectionId:
         env.APPWRITE_SUPPORT_MESSAGES_COLLECTION_ID || "",
+      chatSessionsCollectionId: env.APPWRITE_CHAT_SESSIONS_COLLECTION_ID || "",
+      chatMessagesCollectionId: env.APPWRITE_CHAT_MESSAGES_COLLECTION_ID || "",
       notificationsCollectionId: env.APPWRITE_NOTIFICATIONS_COLLECTION_ID || "",
+      careersCollectionId: env.APPWRITE_CAREERS_COLLECTION_ID || "",
+      applicationsCollectionId: env.APPWRITE_APPLICATIONS_COLLECTION_ID || "",
+      userCardsCollectionId: env.APPWRITE_USER_CARDS_COLLECTION_ID || "",
     },
     redis: {
       host: env.REDIS_HOST,

@@ -423,6 +423,71 @@ class SupportController {
       message: "Message sent",
     });
   }
+
+  // ── POST /support/contact (public) ──────────────────────────────────────────
+  async createContactForm(req, res) {
+    const {
+      name,
+      email,
+      phone,
+      subject,
+      message,
+      source = "contact_page",
+    } = req.body;
+
+    if (!TICKETS()) {
+      throw new ValidationError("Contact form is temporarily unavailable.");
+    }
+
+    const now = new Date().toISOString();
+
+    // Map contact form subjects to internal categories
+    const categoryMap = {
+      account: "account",
+      transaction: "payments",
+      business: "other",
+      partnership: "other",
+      technical: "other",
+      other: "other",
+    };
+
+    const category = categoryMap[subject] || "other";
+
+    // Create a public support ticket
+    const ticket = await db.createDocument(DB(), TICKETS(), ID.unique(), {
+      userId: null, // No user ID for public contact forms
+      userEmail: email,
+      userName: name,
+      userPhone: phone || null,
+      subject: `Contact Form: ${subject}`,
+      category,
+      priority: "medium",
+      message: message.trim(),
+      status: "open",
+      messageCount: 1,
+      source: source,
+      isPublic: true,
+      $createdAt: now,
+      $updatedAt: now,
+    });
+
+    logger.info("Public contact form submitted", {
+      ticketId: ticket.$id,
+      email: email,
+      subject: subject,
+      source: source,
+    });
+
+    return res.status(201).json({
+      success: true,
+      data: {
+        ticketId: ticket.$id,
+        message:
+          "Your message has been received! We'll get back to you within 2 business hours.",
+      },
+      message: "Contact form submitted successfully",
+    });
+  }
 }
 
 module.exports = new SupportController();

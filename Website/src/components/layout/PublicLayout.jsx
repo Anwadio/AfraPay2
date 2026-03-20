@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Outlet, Link } from "react-router-dom";
 import { Container } from "./Layout";
+import LanguageSwitcher from "../common/LanguageSwitcher";
+import { useLanguage } from "../../hooks/useLanguage";
 
 /**
  * PublicLayout Component
@@ -8,6 +10,7 @@ import { Container } from "./Layout";
  */
 const PublicLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const { t } = useLanguage();
 
   // Close mobile menu on resize to desktop
   useEffect(() => {
@@ -56,51 +59,53 @@ const PublicLayout = () => {
                 href="#features"
                 className="text-primary-100 hover:text-white transition-colors"
               >
-                Features
+                {t("navigation.features")}
               </a>
               <Link
                 to="/pricing"
                 className="text-primary-100 hover:text-white transition-colors"
               >
-                Pricing
+                {t("navigation.pricing")}
               </Link>
               <Link
                 to="/about"
                 className="text-primary-100 hover:text-white transition-colors"
               >
-                About
+                {t("navigation.about")}
               </Link>
               <Link
                 to="/contact"
                 className="text-primary-100 hover:text-white transition-colors"
               >
-                Contact
+                {t("navigation.contact")}
               </Link>
             </nav>
 
-            {/* Desktop Auth buttons */}
-            <div className="hidden md:flex items-center space-x-4">
+            {/* Desktop Auth buttons + Language Switcher */}
+            <div className="hidden md:flex items-center space-x-3">
+              <LanguageSwitcher variant="compact" />
               <Link
                 to="/auth/login"
                 className="text-primary-100 hover:text-white font-medium transition-colors"
               >
-                Sign In
+                {t("navigation.signIn")}
               </Link>
               <Link
                 to="/auth/register"
                 className="bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-4 py-2 rounded-lg hover:from-primary-700 hover:to-secondary-700 font-medium transition-all shadow-sm hover:shadow-md"
               >
-                Get Started
+                {t("navigation.getStarted")}
               </Link>
             </div>
 
-            {/* Mobile right side — CTA + hamburger */}
+            {/* Mobile right side — language picker + CTA + hamburger */}
             <div className="flex md:hidden items-center space-x-2">
+              <LanguageSwitcher variant="compact" />
               <Link
                 to="/auth/register"
                 className="bg-gradient-to-r from-primary-600 to-secondary-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-all"
               >
-                Get Started
+                {t("navigation.getStarted")}
               </Link>
               <button
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -156,28 +161,28 @@ const PublicLayout = () => {
                   onClick={closeMobileMenu}
                   className="flex items-center px-3 py-3 rounded-lg text-primary-100 hover:text-white hover:bg-white/10 font-medium transition-colors"
                 >
-                  Features
+                  {t("navigation.features")}
                 </a>
                 <Link
                   to="/pricing"
                   onClick={closeMobileMenu}
                   className="flex items-center px-3 py-3 rounded-lg text-primary-100 hover:text-white hover:bg-white/10 font-medium transition-colors"
                 >
-                  Pricing
+                  {t("navigation.pricing")}
                 </Link>
                 <Link
                   to="/about"
                   onClick={closeMobileMenu}
                   className="flex items-center px-3 py-3 rounded-lg text-primary-100 hover:text-white hover:bg-white/10 font-medium transition-colors"
                 >
-                  About
+                  {t("navigation.about")}
                 </Link>
                 <Link
                   to="/contact"
                   onClick={closeMobileMenu}
                   className="flex items-center px-3 py-3 rounded-lg text-primary-100 hover:text-white hover:bg-white/10 font-medium transition-colors"
                 >
-                  Contact
+                  {t("navigation.contact")}
                 </Link>
                 <div className="pt-2 border-t border-white/10">
                   <Link
@@ -185,7 +190,7 @@ const PublicLayout = () => {
                     onClick={closeMobileMenu}
                     className="flex items-center px-3 py-3 rounded-lg text-primary-100 hover:text-white hover:bg-white/10 font-medium transition-colors"
                   >
-                    Sign In
+                    {t("navigation.signIn")}
                   </Link>
                 </div>
               </nav>
@@ -229,10 +234,10 @@ const PublicLayout = () => {
                     Juba City Centre, South Sudan
                   </p>
                   <a
-                    href="mailto:support@afrapay.com"
-                    className="text-neutral-500 text-sm hover:text-white transition-colors"
+                    href="mailto:support@afrapayafrica.com"
+                    className="text-neutral-400 hover:text-primary-400 transition-colors"
                   >
-                    support@afrapay.com
+                    support@afrapayafrica.com
                   </a>
                 </address>
               </div>

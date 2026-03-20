@@ -20,12 +20,14 @@ import {
 } from "lucide-react";
 import { cn } from "../../utils";
 import { Badge, Avatar } from "../ui";
+import { useTranslation } from "../../utils/accessibility";
 
 const DashboardSidebar = ({ isOpen, onClose, className, user, ...props }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1023px)");
@@ -36,10 +38,10 @@ const DashboardSidebar = ({ isOpen, onClose, className, user, ...props }) => {
 
   const navigationItems = [
     {
-      section: "Overview",
+      section: t("navigation.overview"),
       items: [
         {
-          name: "Dashboard",
+          name: t("navigation.dashboard"),
           href: "/dashboard",
           icon: <LayoutDashboard className="w-5 h-5" />,
           badge: null,
@@ -47,28 +49,28 @@ const DashboardSidebar = ({ isOpen, onClose, className, user, ...props }) => {
       ],
     },
     {
-      section: "Accounts",
+      section: t("navigation.accounts"),
       items: [
         {
-          name: "Wallets",
+          name: t("navigation.wallets"),
           href: "/wallets",
           icon: <Wallet className="w-5 h-5" />,
           badge: { text: "2", variant: "primary" },
         },
         {
-          name: "Transactions",
+          name: t("navigation.transactions"),
           href: "/transactions",
           icon: <ArrowLeftRight className="w-5 h-5" />,
           badge: null,
         },
         {
-          name: "Cards",
+          name: t("navigation.cards"),
           href: "/cards",
           icon: <CreditCard className="w-5 h-5" />,
           badge: null,
         },
         {
-          name: "Send Money",
+          name: t("navigation.sendMoney"),
           href: "/send",
           icon: <Send className="w-5 h-5" />,
           badge: null,
@@ -76,16 +78,16 @@ const DashboardSidebar = ({ isOpen, onClose, className, user, ...props }) => {
       ],
     },
     {
-      section: "Learning",
+      section: t("navigation.learning"),
       items: [
         {
-          name: "Education Hub",
+          name: t("navigation.educationHub"),
           href: "/education",
           icon: <GraduationCap className="w-5 h-5" />,
           badge: { text: "New", variant: "success" },
         },
         {
-          name: "Analytics",
+          name: t("navigation.analytics"),
           href: "/analytics",
           icon: <TrendingUp className="w-5 h-5" />,
           badge: null,
@@ -93,34 +95,34 @@ const DashboardSidebar = ({ isOpen, onClose, className, user, ...props }) => {
       ],
     },
     {
-      section: "Account",
+      section: t("navigation.accountSection"),
       items: [
         {
-          name: "Profile",
+          name: t("navigation.profile"),
           href: "/profile",
           icon: <User className="w-5 h-5" />,
           badge: null,
         },
         {
-          name: "Security",
+          name: t("navigation.security"),
           href: "/security",
           icon: <Shield className="w-5 h-5" />,
           badge: null,
         },
         {
-          name: "Notifications",
+          name: t("navigation.notifications"),
           href: "/notifications",
           icon: <Bell className="w-5 h-5" />,
           badge: null,
         },
         {
-          name: "Settings",
+          name: t("navigation.settings"),
           href: "/settings",
           icon: <Settings className="w-5 h-5" />,
           badge: null,
         },
         {
-          name: "Help & Support",
+          name: t("navigation.help"),
           href: "/help",
           icon: <HelpCircle className="w-5 h-5" />,
           badge: null,

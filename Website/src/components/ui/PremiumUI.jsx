@@ -31,6 +31,8 @@ import {
   Activity,
 } from "lucide-react";
 import { cn } from "../../utils";
+import { useCurrency } from "../../contexts/CurrencyContext";
+import { formatCurrencyAmount } from "../../utils/currency";
 
 /* ─────────────────────────────────────────────
    ANIMATION VARIANTS  (reusable motion configs)
@@ -537,8 +539,10 @@ export const TransactionItem = ({
 
   const isCredit = type === "received";
   const amount = transaction?.amount ?? 0;
-  const currency = transaction?.currency || "USD";
-  const formattedAmount = `${isCredit ? "+" : "-"}${currency} ${Math.abs(amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const { currency: displayCurrency } = useCurrency();
+  // Prefer the transaction's own currency for display but format symbol using user pref
+  const txCurrency = transaction?.currency || displayCurrency;
+  const formattedAmount = `${isCredit ? "+" : "-"}${formatCurrencyAmount(Math.abs(amount), txCurrency)}`;
 
   const date = transaction?.createdAt || transaction?.date;
   const displayDate = date

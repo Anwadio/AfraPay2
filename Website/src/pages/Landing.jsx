@@ -796,9 +796,14 @@ const Landing = () => {
       {/* ── Final CTA ────────────────────────────────────── */}
       <Section
         spacing="xl"
-        className="bg-gradient-to-br from-primary-900 to-secondary-900 text-white relative overflow-hidden"
+        className="text-white relative overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/FinalCTAimage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-900 via-primary-800 to-secondary-900" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-900/85 via-primary-800/75 to-secondary-900/85" />
         <div className="glow-spot top-0 left-1/4 w-96 h-96 bg-blue-600/20" />
         <div className="glow-spot bottom-0 right-1/4 w-80 h-80 bg-teal-600/20" />
 

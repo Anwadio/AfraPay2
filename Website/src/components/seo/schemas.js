@@ -35,7 +35,7 @@ export const ORGANIZATION = {
   contactPoint: {
     "@type": "ContactPoint",
     telephone: "+211-92-000-0000",
-    email: "support@afrapay.com",
+    email: "support@afrapayafrica.com",
     contactType: "customer service",
     availableLanguage: ["English"],
   },

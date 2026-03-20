@@ -1,88 +1,49 @@
 // Internationalization (i18n) utilities
-import React, { createContext, useContext } from "react";
+// Backed by react-i18next for production-grade lazy loading and RTL support.
+import React from "react";
+import {
+  useTranslation as useI18nTranslation,
+  I18nextProvider,
+} from "react-i18next";
+import i18nInstance, { RTL_LANGUAGES, loadLocale, STORAGE_KEY } from "../i18n";
+
+// ── Intl locale mapping ───────────────────────────────────────────────────────
+// ar-juba is a custom locale code — map it to "ar" for Intl API calls
+const intlLocale = (lang) => (lang === "ar-juba" ? "ar" : lang);
 
 /**
- * Language Context for managing the current language
- */
-const LanguageContext = createContext({
-  language: "en",
-  setLanguage: () => {},
-  direction: "ltr",
-  translations: {},
-});
-
-/**
- * Hook to use translation functionality
+ * useTranslation — backward-compatible hook.
+ *
+ * Existing callers continue to work unchanged:
+ *   const { t, language, direction, formatCurrency } = useTranslation();
+ *
+ * Backed by react-i18next; no longer reads from the legacy context object.
  */
 export const useTranslation = () => {
-  const context = useContext(LanguageContext);
-  if (!context) {
-    throw new Error("useTranslation must be used within a LanguageProvider");
-  }
+  const { t: i18nT, i18n } = useI18nTranslation();
 
-  const { language, translations, direction } = context;
+  const language = i18n.language || "en";
+  const direction = RTL_LANGUAGES.includes(language) ? "rtl" : "ltr";
 
   /**
-   * Translate function with interpolation support
-   * @param {string} key - Translation key
-   * @param {object} values - Values for interpolation
-   * @returns {string} Translated text
+   * Translate function — wraps i18next `t` with a compatible signature.
+   * Supports {{variable}} interpolation via the values object.
    */
-  const t = (key, values = {}) => {
-    const keys = key.split(".");
-    let translation = translations[language];
+  const t = (key, values = {}) => i18nT(key, values);
 
-    for (const k of keys) {
-      if (translation && typeof translation === "object") {
-        translation = translation[k];
-      } else {
-        // Fallback to English if translation not found
-        translation = translations["en"];
-        for (const k of keys) {
-          if (translation && typeof translation === "object") {
-            translation = translation[k];
-          } else {
-            translation = key; // Ultimate fallback
-            break;
-          }
-        }
-        break;
-      }
-    }
+  const formatNumber = (number, options = {}) =>
+    new Intl.NumberFormat(intlLocale(language), options).format(number);
 
-    if (typeof translation !== "string") {
-      return key; // Fallback to key if no translation found
-    }
-
-    // Handle interpolation
-    return translation.replace(/\\{\\{(\\w+)\\}\\}/g, (match, variable) => {
-      return values[variable] || match;
-    });
-  };
-
-  /**
-   * Format number according to locale
-   */
-  const formatNumber = (number, options = {}) => {
-    return new Intl.NumberFormat(language, options).format(number);
-  };
-
-  /**
-   * Format currency according to locale
-   */
-  const formatCurrency = (amount, currency = "USD") => {
-    return new Intl.NumberFormat(language, {
+  const formatCurrency = (amount, currency = "USD") =>
+    new Intl.NumberFormat(intlLocale(language), {
       style: "currency",
       currency,
     }).format(amount);
-  };
 
-  /**
-   * Format date according to locale
-   */
-  const formatDate = (date, options = {}) => {
-    return new Intl.DateTimeFormat(language, options).format(new Date(date));
-  };
+  const formatDate = (date, options = {}) =>
+    new Intl.DateTimeFormat(intlLocale(language), options).format(
+      new Date(date),
+    );
 
   return {
     t,
@@ -95,31 +56,30 @@ export const useTranslation = () => {
 };
 
 /**
- * LanguageProvider component
+ * LanguageProvider — backward-compatible wrapper.
+ *
+ * Wraps the app with I18nextProvider (react-i18next).
+ * The `translations` and `initialLanguage` props are still accepted for
+ * compatibility but i18next manages the actual language state.
  */
 export const LanguageProvider = ({
   children,
+  // Legacy props — kept for backward compat but the real state lives in i18next
   initialLanguage = "en",
+  // eslint-disable-next-line no-unused-vars
   translations = {},
 }) => {
-  const [language, setLanguage] = React.useState(initialLanguage);
+  // Seed the language from props if localStorage doesn't already have a preference
+  React.useEffect(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (!stored && initialLanguage && initialLanguage !== "en") {
+      loadLocale(initialLanguage).then(() => {
+        i18nInstance.changeLanguage(initialLanguage);
+      });
+    }
+  }, [initialLanguage]);
 
-  // RTL languages
-  const rtlLanguages = ["ar", "he", "fa", "ur"];
-  const direction = rtlLanguages.includes(language) ? "rtl" : "ltr";
-
-  const value = {
-    language,
-    setLanguage,
-    direction,
-    translations,
-  };
-
-  return (
-    <LanguageContext.Provider value={value}>
-      {children}
-    </LanguageContext.Provider>
-  );
+  return <I18nextProvider i18n={i18nInstance}>{children}</I18nextProvider>;
 };
 
 /**

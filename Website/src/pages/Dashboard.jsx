@@ -35,11 +35,16 @@ import {
   AnimatedButton,
 } from "../components/ui/PremiumUI";
 import { useAuth } from "../contexts/AuthContext";
+import { useCurrency } from "../contexts/CurrencyContext";
+import { formatCurrencyAmount } from "../utils/currency";
 import { userAPI, transactionAPI } from "../services/api";
+import { useTranslation } from "../utils/accessibility";
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { currency: displayCurrency, currencyMeta } = useCurrency();
+  const { t } = useTranslation();
 
   const [profile, setProfile] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -98,12 +103,8 @@ const Dashboard = () => {
   const monthlyExpenses = summary?.outgoingAmount ?? null;
   const netSavings = summary?.netSavings ?? null;
   const summaryLoading = loadingSummary;
-  const summaryCurrency = summary?.currency || "USD";
 
-  const formatAmount = (val) =>
-    val !== null
-      ? `${summaryCurrency} ${val.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-      : "—";
+  const formatAmount = (val) => formatCurrencyAmount(val, displayCurrency);
 
   const handleTransactionClick = (transaction) => {
     console.log("Transaction clicked:", transaction);
@@ -118,14 +119,20 @@ const Dashboard = () => {
             <div className="flex items-center gap-2 mb-1">
               <Sparkles className="w-4 h-4 text-blue-500" />
               <span className="text-xs font-semibold text-blue-600 uppercase tracking-widest">
-                Overview
+                {t("navigation.overview")}
               </span>
+              {currencyMeta && (
+                <span className="ml-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-neutral-100 border border-neutral-200 text-xs font-semibold text-neutral-600">
+                  <span>{currencyMeta.flag}</span>
+                  <span>{currencyMeta.code}</span>
+                </span>
+              )}
             </div>
             <h1 className="text-2xl font-bold text-slate-900 tracking-tight leading-none mb-1">
-              Welcome back, {displayName.split(" ")[0]} 👋
+              {t("dashboard.welcome", { name: displayName.split(" ")[0] })} 👋
             </h1>
             <p className="text-sm text-slate-400">
-              Here's what's happening with your money today.
+              {t("dashboard.whatsHappening")}
             </p>
           </div>
           <AnimatedButton
@@ -135,7 +142,7 @@ const Dashboard = () => {
             iconPosition="right"
             onClick={() => navigate("/transactions")}
           >
-            View All
+            {t("dashboard.viewAll")}
           </AnimatedButton>
         </AnimatedSection>
 
@@ -190,8 +197,8 @@ const Dashboard = () => {
         {/* ── Quick Actions ───────────────────────────────────── */}
         <AnimatedSection delay={1}>
           <SectionHeader
-            title="Quick Actions"
-            description="Common financial operations"
+            title={t("dashboard.quickActions")}
+            description={t("dashboard.commonOperations")}
           />
           <FinanceQuickActions />
         </AnimatedSection>
@@ -201,7 +208,7 @@ const Dashboard = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Account Info Card */}
             <GlassCard className="p-6">
-              <SectionHeader title="Account Info" badge="Live" />
+              <SectionHeader title={t("dashboard.accountInfo")} badge="Live" />
               {loadingProfile ? (
                 <div className="space-y-3 animate-pulse">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -214,22 +221,28 @@ const Dashboard = () => {
               ) : (
                 <div className="space-y-3">
                   {[
-                    { label: "Full Name", value: displayName },
-                    { label: "Email", value: dashboardUser.email },
-                    { label: "Country", value: profile?.country || "—" },
+                    { label: t("profile.fullName"), value: displayName },
+                    { label: t("profile.email"), value: dashboardUser.email },
                     {
-                      label: "KYC Level",
+                      label: t("profile.country"),
+                      value: profile?.country || "\u2014",
+                    },
+                    {
+                      label: t("profile.kycLevel"),
                       value: String(profile?.kycLevel ?? user?.kycLevel ?? 0),
                     },
                     {
-                      label: "Email Verified",
-                      value: profile?.emailVerified ? "Verified" : "Pending",
+                      label:
+                        t("profile.emailVerified") || t("auth.verifyEmail"),
+                      value: profile?.emailVerified
+                        ? t("profile.verified")
+                        : t("profile.pending"),
                       valueClass: profile?.emailVerified
                         ? "text-emerald-600"
                         : "text-amber-600",
                     },
                     {
-                      label: "Account Status",
+                      label: t("profile.accountStatus"),
                       value: profile?.accountStatus || "active",
                     },
                   ].map(({ label, value, valueClass }) => (
@@ -259,7 +272,7 @@ const Dashboard = () => {
             <GlassCard className="flex flex-col">
               <div className="px-6 pt-6 pb-4">
                 <SectionHeader
-                  title="Recent Transactions"
+                  title={t("dashboard.recentTransactions")}
                   action={
                     <AnimatedButton
                       variant="outline"
@@ -268,7 +281,7 @@ const Dashboard = () => {
                       iconPosition="right"
                       onClick={() => navigate("/transactions")}
                     >
-                      See all
+                      {t("dashboard.seeAll")}
                     </AnimatedButton>
                   }
                 />
@@ -297,10 +310,10 @@ const Dashboard = () => {
                       <Clock className="w-6 h-6 text-slate-300" />
                     </div>
                     <p className="text-sm font-medium text-slate-500">
-                      No transactions yet
+                      {t("dashboard.noTransactionsYet")}
                     </p>
                     <p className="text-xs text-slate-400 mt-1">
-                      Your activity will appear here
+                      {t("dashboard.activityAppear")}
                     </p>
                   </div>
                 ) : (

@@ -18,6 +18,8 @@ const {
   NotFoundError,
 } = require("../middleware/monitoring/errorHandler");
 const { appwrite: dbConn } = require("../database/connection");
+// Session store shared with authController (module-level Map persists across requires)
+const { activeSessions } = require("./authController");
 
 // Lazily resolve shared instances at request time (after DB init)
 const getDatabases = () => dbConn.getDatabases();
@@ -318,14 +320,14 @@ class ProfileController {
 
       const securitySettings = {
         mfaEnabled: userDetails.labels?.mfaEnabled === "true",
-        loginAlerts: userDetails.labels?.loginAlerts !== "false", // Default true
-        transactionAlerts: userDetails.labels?.transactionAlerts !== "false", // Default true
+        loginAlerts: userDetails.prefs?.loginAlerts === "true", // Default false
+        transactionAlerts: userDetails.prefs?.transactionAlerts === "true", // Default false
         sessionTimeout: parseInt(userDetails.labels?.sessionTimeout || "3600"),
         trustedDevices: userDetails.labels?.trustedDevices
           ? JSON.parse(userDetails.labels.trustedDevices)
           : [],
         recentLogins: await this.getRecentLogins(user.id),
-        activeSessions: await this.getActiveSessions(user.id),
+        activeSessions: this._getSessionsForUser(user.id, user.sessionId),
       };
 
       res.success(securitySettings, "Security settings retrieved successfully");
@@ -353,20 +355,30 @@ class ProfileController {
         updateLabels.mfaEnabled = twoFactorAuth ? "true" : "false";
       }
 
-      if (loginAlerts !== undefined) {
-        updateLabels.loginAlerts = loginAlerts ? "true" : "false";
-      }
-
-      if (transactionAlerts !== undefined) {
-        updateLabels.transactionAlerts = transactionAlerts ? "true" : "false";
-      }
-
       if (sessionTimeout !== undefined) {
         updateLabels.sessionTimeout = sessionTimeout.toString();
       }
 
       if (Object.keys(updateLabels).length > 0) {
         await getUsers().updateLabels(user.id, updateLabels);
+      }
+
+      // loginAlerts and transactionAlerts live in prefs (key-value store),
+      // not labels (string-array roles). Must read-merge-write to avoid
+      // wiping unrelated prefs like passwordHash, totpSecret, etc.
+      const prefsUpdate = {};
+      if (loginAlerts !== undefined) {
+        prefsUpdate.loginAlerts = loginAlerts ? "true" : "false";
+      }
+      if (transactionAlerts !== undefined) {
+        prefsUpdate.transactionAlerts = transactionAlerts ? "true" : "false";
+      }
+      if (Object.keys(prefsUpdate).length > 0) {
+        const userDetails = await getUsers().get(user.id);
+        await getUsers().updatePrefs(user.id, {
+          ...(userDetails.prefs || {}),
+          ...prefsUpdate,
+        });
       }
 
       logger.audit("SECURITY_SETTINGS_UPDATED", user.id, {
@@ -681,18 +693,160 @@ class ProfileController {
     ];
   }
 
-  async getActiveSessions(userId) {
-    // TODO: Get actual active sessions
-    return [
-      {
-        id: "session_1",
-        device: "Chrome on Windows",
-        ip: "192.168.1.1",
-        location: "Lagos, Nigeria",
-        lastActivity: new Date().toISOString(),
+  // ── Session helpers ─────────────────────────────────────────────────────
+
+  _parseUserAgent(ua) {
+    if (!ua) return { browser: "Unknown", os: "Unknown" };
+    let browser = "Unknown";
+    if (/Edg\//.test(ua)) browser = "Edge";
+    else if (/OPR\/|Opera/.test(ua)) browser = "Opera";
+    else if (/Chrome\//.test(ua)) browser = "Chrome";
+    else if (/Firefox\//.test(ua)) browser = "Firefox";
+    else if (/Safari\//.test(ua)) browser = "Safari";
+    let os = "Unknown";
+    if (/Windows/.test(ua)) os = "Windows";
+    else if (/Mac OS X/.test(ua)) os = "macOS";
+    else if (/Android/.test(ua)) os = "Android";
+    else if (/iPhone|iPad/.test(ua)) os = "iOS";
+    else if (/Linux/.test(ua)) os = "Linux";
+    return { browser, os };
+  }
+
+  _maskIp(ip) {
+    if (!ip) return "Unknown";
+    const v4 = ip.match(/^(\d+\.\d+)\.\d+\.\d+$/);
+    if (v4) return `${v4[1]}.xx.xx`;
+    const v4mapped = ip.match(/^::ffff:(\d+\.\d+)\.\d+\.\d+$/);
+    if (v4mapped) return `${v4mapped[1]}.xx.xx`;
+    return ip.length > 12 ? ip.substring(0, 10) + "…" : ip;
+  }
+
+  _getSessionsForUser(userId, currentSessionId) {
+    const now = new Date();
+    const result = [];
+    for (const [id, session] of activeSessions.entries()) {
+      if (
+        session.userId === userId &&
+        session.isActive &&
+        session.expiresAt > now
+      ) {
+        const { browser, os } = this._parseUserAgent(session.userAgent);
+        result.push({
+          id,
+          device: `${browser} on ${os}`,
+          ip: this._maskIp(session.ipAddress),
+          lastActive: session.lastActivity.toISOString(),
+          createdAt: session.createdAt.toISOString(),
+          current: id === currentSessionId,
+        });
+      }
+    }
+    return result.sort((a, b) => {
+      if (a.current) return -1;
+      if (b.current) return 1;
+      return new Date(b.lastActive) - new Date(a.lastActive);
+    });
+  }
+
+  /**
+   * GET /api/v1/profile/sessions
+   * Returns all active sessions for the authenticated user.
+   */
+  async getActiveSessions(req, res) {
+    const { user } = req;
+    const sessions = this._getSessionsForUser(user.id, user.sessionId);
+
+    // If the current session is not in the in-memory Map (e.g. server was
+    // restarted after login), synthesise it from the request context so the
+    // user always sees at least their active session.
+    const hasCurrentSession = sessions.some((s) => s.current);
+    if (!hasCurrentSession) {
+      const { browser, os } = this._parseUserAgent(req.get("User-Agent"));
+      sessions.unshift({
+        id: user.sessionId,
+        device: `${browser} on ${os}`,
+        ip: this._maskIp(req.ip),
+        lastActive: new Date().toISOString(),
+        createdAt: new Date(user.iat * 1000).toISOString(),
         current: true,
-      },
-    ];
+      });
+    }
+
+    res.success(sessions, "Active sessions retrieved");
+  }
+
+  /**
+   * DELETE /api/v1/profile/sessions/:sessionId
+   * Revoke a specific session. If it is the current session the cookies are
+   * also cleared so the client is effectively logged out.
+   */
+  async revokeSession(req, res) {
+    const { user } = req;
+    const { sessionId } = req.params;
+    const isCurrentSession = sessionId === user.sessionId;
+
+    // For non-current sessions, verify ownership via the Map
+    if (!isCurrentSession) {
+      const session = activeSessions.get(sessionId);
+      if (!session || session.userId !== user.id) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Session not found." });
+      }
+    }
+
+    activeSessions.delete(sessionId);
+    logger.info("Session revoked by user", {
+      userId: user.id,
+      revokedSessionId: sessionId,
+      selfLogout: isCurrentSession,
+    });
+
+    if (isCurrentSession) {
+      // Blacklist the current access token so it cannot be reused
+      if (req.token && req.tokenPayload) {
+        const { addToBlacklist } = require("../utils/tokenBlacklist");
+        await addToBlacklist(req.tokenPayload, req.token);
+      }
+      // Clear auth cookies
+      const config = require("../config/environment");
+      const clearOptions = {
+        httpOnly: true,
+        secure: config.security.cookie.secure,
+        sameSite: config.security.cookie.sameSite,
+        ...(config.security.cookie.domain
+          ? { domain: config.security.cookie.domain }
+          : {}),
+      };
+      res.clearCookie("accessToken", clearOptions);
+      res.clearCookie("refreshToken", clearOptions);
+      return res.success(
+        { loggedOut: true },
+        "Session revoked. You have been signed out.",
+      );
+    }
+
+    res.success(null, "Session revoked successfully");
+  }
+
+  /**
+   * DELETE /api/v1/profile/sessions
+   * Revoke all sessions for the user except the current one.
+   */
+  async revokeAllSessions(req, res) {
+    const { user } = req;
+    let count = 0;
+    for (const [id, session] of activeSessions.entries()) {
+      if (session.userId === user.id && id !== user.sessionId) {
+        activeSessions.delete(id);
+        count++;
+      }
+    }
+    logger.info("All other sessions revoked by user", {
+      userId: user.id,
+      count,
+    });
+    res.success({ revoked: count }, `${count} session(s) revoked successfully`);
   }
 
   /**

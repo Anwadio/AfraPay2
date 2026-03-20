@@ -3,6 +3,7 @@ import toast from "react-hot-toast";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { DashboardSection } from "../components/layout/DashboardUtils";
 import { useAuth } from "../contexts/AuthContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { userAPI, transactionAPI, walletAPI } from "../services/api";
 import {
   TransactionHistoryHeader,
@@ -63,6 +64,7 @@ const dateRangeToParams = (dateRange) => {
 
 const TransactionHistory = () => {
   const { user } = useAuth();
+  const { currency: displayCurrency } = useCurrency();
 
   // Layout user
   const [profile, setProfile] = useState(null);
@@ -140,14 +142,13 @@ const TransactionHistory = () => {
       const totalUSD = walletRes?.data?.totalValueUSD ?? 0;
       const income = summaryRes?.data?.incomingAmount ?? 0;
       const expenses = summaryRes?.data?.outgoingAmount ?? 0;
-      const currency = summaryRes?.data?.currency || "USD";
       setBalances([
         {
           id: 1,
           type: "total",
           title: "Total Balance",
           amount: totalUSD,
-          currency: "USD",
+          currency: displayCurrency,
           change: "",
           changeType: "neutral",
           icon: "wallet",
@@ -157,7 +158,7 @@ const TransactionHistory = () => {
           type: "available",
           title: "Monthly Income",
           amount: income,
-          currency,
+          currency: displayCurrency,
           change: "",
           changeType: "positive",
           icon: "cash",
@@ -167,7 +168,7 @@ const TransactionHistory = () => {
           type: "pending",
           title: "Monthly Expenses",
           amount: expenses,
-          currency,
+          currency: displayCurrency,
           change: "",
           changeType: "negative",
           icon: "clock",

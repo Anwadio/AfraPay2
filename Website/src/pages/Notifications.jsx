@@ -84,7 +84,10 @@ const DEMO_NOTIFICATIONS = [
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
 function timeAgo(isoString) {
-  const diff = Date.now() - new Date(isoString).getTime();
+  if (!isoString) return "";
+  const ts = new Date(isoString).getTime();
+  if (isNaN(ts)) return "";
+  const diff = Date.now() - ts;
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return "Just now";
   if (mins < 60) return `${mins}m ago`;
@@ -196,7 +199,7 @@ function NotificationItem({ notif, onMarkRead, onDelete }) {
           {notif.message}
         </p>
         <p className="text-[10px] text-neutral-400 dark:text-neutral-500">
-          {timeAgo(notif.createdAt)}
+          {timeAgo(notif.$createdAt || notif.createdAt)}
         </p>
       </div>
 

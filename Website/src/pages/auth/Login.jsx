@@ -7,11 +7,13 @@ import FacebookLogin from "@greatsumini/react-facebook-login";
 import { authAPI } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import SEOHead from "../../components/seo/SEOHead";
+import { useTranslation } from "../../utils/accessibility";
 
 const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAuthenticated, setAuthFromBackend } = useAuth();
+  const { t } = useTranslation();
   // Where to send the user after login (supports "from" redirect state)
   const from = location.state?.from?.pathname || "/dashboard";
   const [formData, setFormData] = useState(() => {
@@ -398,9 +400,11 @@ const Login = () => {
       />
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-neutral-900">Welcome back</h1>
+        <h1 className="text-2xl font-bold text-neutral-900">
+          {t("auth.welcomeBack")}
+        </h1>
         <p className="text-sm text-neutral-600 mt-1">
-          Sign in to your AfraPay account
+          {t("auth.signInSubtitle")}
         </p>
       </div>
 
@@ -455,7 +459,7 @@ const Login = () => {
             htmlFor="email"
             className="block text-sm font-semibold text-primary-800"
           >
-            Email Address *
+            {t("auth.emailAddress")} *
           </label>
           <input
             type="email"
@@ -463,7 +467,7 @@ const Login = () => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            placeholder="Enter your email"
+            placeholder={t("auth.email")}
             disabled={loading}
             required
             className="w-full px-4 py-3 border rounded-lg shadow-sm text-base sm:text-sm transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 hover:border-primary-300 hover:shadow-md border-primary-200 bg-white text-neutral-900 min-h-[44px] font-medium"
@@ -476,7 +480,7 @@ const Login = () => {
             htmlFor="password"
             className="block text-sm font-semibold text-primary-800"
           >
-            Password *
+            {t("auth.password")} *
           </label>
           <div className="relative">
             <input
@@ -546,14 +550,16 @@ const Login = () => {
               disabled={loading}
               className="rounded border-neutral-300 text-primary-600 focus:ring-primary-500"
             />
-            <span className="ml-2 text-sm text-neutral-600">Remember me</span>
+            <span className="ml-2 text-sm text-neutral-600">
+              {t("auth.rememberMe")}
+            </span>
           </label>
 
           <Link
             to="/auth/reset-password"
             className="text-sm text-primary-600 hover:text-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded"
           >
-            Forgot password?
+            {t("auth.forgotPassword")}
           </Link>
         </div>
 
@@ -584,10 +590,10 @@ const Login = () => {
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Signing in...
+              {t("auth.signingIn")}
             </>
           ) : (
-            "Sign in"
+            t("auth.signIn")
           )}
         </button>
       </form>
@@ -599,7 +605,7 @@ const Login = () => {
         </div>
         <div className="relative flex justify-center text-sm">
           <span className="px-2 bg-white text-neutral-500">
-            Or continue with
+            {t("auth.orContinueWith")}
           </span>
         </div>
       </div>
@@ -644,12 +650,12 @@ const Login = () => {
       {/* Sign up link */}
       <div className="text-center">
         <p className="text-sm text-neutral-600">
-          Don't have an account?{" "}
+          {t("auth.dontHaveAccount")}{" "}
           <Link
             to="/auth/register"
             className="font-medium text-primary-600 hover:text-primary-500"
           >
-            Sign up for free
+            {t("auth.signUpFree")}
           </Link>
         </p>
       </div>

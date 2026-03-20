@@ -155,6 +155,62 @@ router.post(
 );
 
 /**
+ * @route  POST /api/v1/education/content/:contentId/enroll
+ * @desc   Enroll the current user in a content item
+ * @access Authenticated
+ */
+router.post(
+  "/content/:contentId/enroll",
+  authenticate,
+  writeLimiter,
+  [contentIdParam],
+  validateRequest,
+  asyncHandler(education.enrollInContent.bind(education)),
+);
+
+/**
+ * @route  DELETE /api/v1/education/content/:contentId/enroll
+ * @desc   Unenroll the current user from a content item
+ * @access Authenticated
+ */
+router.delete(
+  "/content/:contentId/enroll",
+  authenticate,
+  writeLimiter,
+  [contentIdParam],
+  validateRequest,
+  asyncHandler(education.unenrollFromContent.bind(education)),
+);
+
+/**
+ * @route  POST /api/v1/education/content/:contentId/complete
+ * @desc   Mark a content item as complete
+ * @access Authenticated
+ */
+router.post(
+  "/content/:contentId/complete",
+  authenticate,
+  writeLimiter,
+  [contentIdParam],
+  validateRequest,
+  asyncHandler(education.markContentComplete.bind(education)),
+);
+
+/**
+ * @route  GET /api/v1/education/my-content
+ * @desc   Content items the current user is enrolled in
+ * @access Authenticated
+ */
+router.get(
+  "/my-content",
+  authenticate,
+  readLimiter,
+  [...pagination],
+  validateRequest,
+  asyncHandler(education.getMyContentEnrollments.bind(education)),
+);
+
+/**
  * @route  POST /api/v1/education/content  [ADMIN]
  * @desc   Create a new content item (draft)
  * @access Admin
@@ -593,6 +649,18 @@ router.post(
   authorize(["admin", "super_admin"]),
   upload.single("file"),
   asyncHandler(education.uploadContentFile.bind(education)),
+);
+
+/**
+ * @route  GET /api/v1/education/my-stats
+ * @desc   Get the current user's learning stats (hours, streak, completions)
+ * @access Authenticated
+ */
+router.get(
+  "/my-stats",
+  authenticate,
+  readLimiter,
+  asyncHandler(education.getUserStats.bind(education)),
 );
 
 // ════════════════════════════════════════════════════════════════════════════

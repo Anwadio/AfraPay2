@@ -223,10 +223,79 @@ function authenticateWebSocket(socket, next) {
   }
 }
 
+/**
+ * Optional WebSocket authentication middleware for guest and authenticated users
+ * @param {Object} socket - Socket.io socket object
+ * @param {Function} next - Next function
+ */
+function optionalAuthenticateWebSocket(socket, next) {
+  try {
+    const token =
+      socket.request.headers.authorization?.slice(7) ||
+      socket.handshake.auth.token ||
+      socket.handshake.query.token;
+
+    if (!token) {
+      // Allow guest users
+      socket.user = null;
+      logger.info("WebSocket guest user connected", {
+        socketId: socket.id,
+        ip: socket.request.connection.remoteAddress,
+      });
+      return next();
+    }
+
+    try {
+      const decoded = verifyToken(token);
+
+      if (decoded.type !== "access") {
+        // Invalid token - treat as guest
+        socket.user = null;
+        return next();
+      }
+
+      socket.user = {
+        id: decoded.userId,
+        email: decoded.email,
+        role: decoded.role,
+        permissions: decoded.permissions || [],
+        sessionId: decoded.sessionId,
+      };
+
+      logger.info("WebSocket user authenticated", {
+        userId: socket.user.id,
+        email: socket.user.email,
+        socketId: socket.id,
+        ip: socket.request.connection.remoteAddress,
+      });
+    } catch (authError) {
+      // Authentication failed - treat as guest
+      socket.user = null;
+      logger.info("WebSocket guest user connected (auth failed)", {
+        socketId: socket.id,
+        ip: socket.request.connection.remoteAddress,
+        authError: authError.message,
+      });
+    }
+
+    next();
+  } catch (error) {
+    // Unexpected error - still allow as guest
+    socket.user = null;
+    logger.warn("WebSocket authentication error, treating as guest", {
+      error: error.message,
+      socketId: socket.id,
+      ip: socket.request.connection.remoteAddress,
+    });
+    next();
+  }
+}
+
 module.exports = {
   authenticate,
   optionalAuthenticate,
   authenticateWebSocket,
+  optionalAuthenticateWebSocket,
   extractToken,
   verifyToken,
 };

@@ -48,8 +48,53 @@ const PRIORITIES = ["low", "medium", "high", "urgent"];
 
 const ticketIdParam = param("id")
   .isString()
-  .notEmpty()
-  .withMessage("Valid ticket ID required");
+  .isLength({ min: 1 })
+  .withMessage("Ticket ID is required");
+
+// ── Public Routes (No Authentication Required) ────────────────────────────────
+
+/**
+ * @route   POST /api/v1/support/contact
+ * @desc    Submit public contact form
+ * @access  Public
+ */
+router.post(
+  "/contact",
+  writeLimiter,
+  [
+    body("name")
+      .trim()
+      .isLength({ min: 2, max: 100 })
+      .withMessage("Name must be between 2 and 100 characters"),
+    body("email")
+      .isEmail()
+      .normalizeEmail()
+      .withMessage("Please provide a valid email address"),
+    body("phone")
+      .optional()
+      .isMobilePhone()
+      .withMessage("Please provide a valid phone number"),
+    body("subject")
+      .isIn([
+        "account",
+        "transaction",
+        "business",
+        "partnership",
+        "technical",
+        "other",
+      ])
+      .withMessage("Please select a valid subject"),
+    body("message")
+      .trim()
+      .isLength({ min: 10, max: 2000 })
+      .withMessage("Message must be between 10 and 2000 characters"),
+    body("source").optional().isString().withMessage("Source must be a string"),
+  ],
+  validateRequest,
+  asyncHandler(support.createContactForm.bind(support)),
+);
+
+// ── Authenticated Routes ───────────────────────────────────────────────────────
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FAQ & status (read-only, authenticated)

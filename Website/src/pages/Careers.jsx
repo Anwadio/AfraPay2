@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Container,
@@ -8,12 +8,15 @@ import {
   Badge,
   Card,
   CardContent,
+  ApplicationFormModal,
 } from "../components";
 import { Icon } from "../components/common/Icons";
 import SEOHead from "../components/seo/SEOHead";
 import { SCHEMA_CAREERS } from "../components/seo/schemas";
+import api from "../services/api";
 
-const DEPARTMENTS = [
+// ── Fallback data — shown when the API is unavailable ────────────────────────
+const FALLBACK_DEPARTMENTS = [
   "All",
   "Engineering",
   "Product",
@@ -23,98 +26,7 @@ const DEPARTMENTS = [
   "Support",
 ];
 
-const OPEN_ROLES = [
-  {
-    id: 1,
-    title: "Senior Backend Engineer",
-    department: "Engineering",
-    location: "Juba, South Sudan",
-    type: "Full-time",
-    level: "Senior",
-    description:
-      "Build and scale the payment infrastructure that serves millions of South Sudanese users. You'll work on high-throughput APIs, real-time fraud detection pipelines, and distributed systems.",
-    tags: ["Node.js", "PostgreSQL", "Redis", "AWS"],
-  },
-  {
-    id: 2,
-    title: "React / React Native Engineer",
-    department: "Engineering",
-    location: "Remote (East Africa)",
-    type: "Full-time",
-    level: "Mid-level",
-    description:
-      "Own the user-facing experience across our web and mobile apps. You'll collaborate closely with design and product to ship polished, accessible features to millions of users.",
-    tags: ["React", "React Native", "TypeScript", "Tailwind CSS"],
-  },
-  {
-    id: 3,
-    title: "Product Manager — Payments",
-    department: "Product",
-    location: "Juba, South Sudan",
-    type: "Full-time",
-    level: "Mid-level",
-    description:
-      "Lead the roadmap for our core payments product. You'll work with engineering, design, compliance, and customer support to ship features that move money faster and more safely.",
-    tags: ["Fintech", "Agile", "Payments", "Roadmap"],
-  },
-  {
-    id: 4,
-    title: "Head of Compliance & Risk",
-    department: "Finance",
-    location: "Juba, South Sudan",
-    type: "Full-time",
-    level: "Lead",
-    description:
-      "Own our regulatory compliance programme across South Sudan and future markets. You'll liaise with the Bank of South Sudan, manage audits, and build our risk frameworks.",
-    tags: ["AML", "KYC", "Regulatory", "Risk Management"],
-  },
-  {
-    id: 5,
-    title: "Customer Support Specialist",
-    department: "Support",
-    location: "Juba / Wau",
-    type: "Full-time",
-    level: "Entry-level",
-    description:
-      "Be the first point of contact for our users. You'll resolve account queries, investigate transaction issues, and improve support processes to raise our satisfaction scores.",
-    tags: ["Customer Service", "Zendesk", "Arabic/English"],
-  },
-  {
-    id: 6,
-    title: "Growth & Performance Marketing Manager",
-    department: "Marketing",
-    location: "Remote (East Africa)",
-    type: "Full-time",
-    level: "Mid-level",
-    description:
-      "Drive user acquisition and retention through data-driven campaigns, partnerships, and community programmes across South Sudan and the wider East African market.",
-    tags: ["SEO/SEM", "Meta Ads", "Analytics", "Copywriting"],
-  },
-  {
-    id: 7,
-    title: "DevOps / Cloud Infrastructure Engineer",
-    department: "Engineering",
-    location: "Remote",
-    type: "Full-time",
-    level: "Senior",
-    description:
-      "Keep our cloud infrastructure secure, reliable, and fast. You'll own CI/CD pipelines, Kubernetes clusters, monitoring, and disaster recovery for a 99.98% uptime product.",
-    tags: ["AWS", "Kubernetes", "Terraform", "Prometheus"],
-  },
-  {
-    id: 8,
-    title: "Field Operations Agent — Malakal",
-    department: "Operations",
-    location: "Malakal, South Sudan",
-    type: "Full-time",
-    level: "Entry-level",
-    description:
-      "Represent AfraPay on the ground in Upper Nile State. You'll onboard new merchants, support agent networks, and gather community feedback to inform our expansion strategy.",
-    tags: ["Field Sales", "Community", "Arabic", "Training"],
-  },
-];
-
-const BENEFITS = [
+const FALLBACK_BENEFITS = [
   {
     icon: "zap",
     title: "Competitive Salary",
@@ -159,30 +71,34 @@ const BENEFITS = [
   },
 ];
 
-const VALUES = [
+const FALLBACK_VALUES = [
   {
-    emoji: "🚀",
+    icon: "zap",
+    color: "bg-primary-50 text-primary-600",
     title: "Move Fast",
     body: "We ship, learn, and iterate. Speed with quality is our default.",
   },
   {
-    emoji: "🤝",
+    icon: "checkCircle",
+    color: "bg-success-50 text-success-600",
     title: "Own It",
     body: "Every team member takes full ownership of their work and its impact.",
   },
   {
-    emoji: "🌍",
+    icon: "globe",
+    color: "bg-secondary-50 text-secondary-600",
     title: "Africa First",
     body: "Everything we build is designed for African realities, not adapted from elsewhere.",
   },
   {
-    emoji: "💬",
+    icon: "shield",
+    color: "bg-warning-50 text-warning-600",
     title: "Radical Honesty",
     body: "We give direct, respectful feedback and expect the same in return.",
   },
 ];
 
-const levelColors = {
+const FALLBACK_LEVEL_COLORS = {
   "Entry-level": "bg-success-100 text-success-700",
   "Mid-level": "bg-primary-100 text-primary-700",
   Senior: "bg-secondary-100 text-secondary-700",
@@ -193,9 +109,49 @@ const Careers = () => {
   const navigate = useNavigate();
   const [activeDept, setActiveDept] = useState("All");
   const [search, setSearch] = useState("");
-  const [applied, setApplied] = useState(null);
+  const [applicationModal, setApplicationModal] = useState({
+    isOpen: false,
+    role: null,
+  });
 
-  const filtered = OPEN_ROLES.filter((r) => {
+  // ── API state ──────────────────────────────────────────────────────────────
+  const [openRoles, setOpenRoles] = useState([]);
+  const [departments, setDepartments] = useState(FALLBACK_DEPARTMENTS);
+  const [benefits, setBenefits] = useState(FALLBACK_BENEFITS);
+  const [values, setValues] = useState(FALLBACK_VALUES);
+  const [levelColors, setLevelColors] = useState(FALLBACK_LEVEL_COLORS);
+  const [rolesNotice, setRolesNotice] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchCareersData = async () => {
+      try {
+        const data = await api.get("/careers");
+        const payload = data?.data ?? data;
+        if (cancelled) return;
+
+        if (payload.roles !== undefined) setOpenRoles(payload.roles);
+        if (payload.departments?.length) setDepartments(payload.departments);
+        if (payload.benefits?.length) setBenefits(payload.benefits);
+        if (payload.values?.length) setValues(payload.values);
+        if (payload.levelColors) setLevelColors(payload.levelColors);
+        if (payload.rolesNotice) setRolesNotice(payload.rolesNotice);
+      } catch {
+        // Network / server error — fallback data already in state, nothing to do
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchCareersData();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const filtered = openRoles.filter((r) => {
     const matchDept = activeDept === "All" || r.department === activeDept;
     const matchSearch =
       search === "" ||
@@ -203,6 +159,20 @@ const Careers = () => {
       r.tags.some((t) => t.toLowerCase().includes(search.toLowerCase()));
     return matchDept && matchSearch;
   });
+
+  const handleApplyClick = (role) => {
+    setApplicationModal({
+      isOpen: true,
+      role,
+    });
+  };
+
+  const handleCloseModal = () => {
+    setApplicationModal({
+      isOpen: false,
+      role: null,
+    });
+  };
 
   return (
     <div className="min-h-screen">
@@ -213,8 +183,15 @@ const Careers = () => {
         structuredData={SCHEMA_CAREERS}
       />
       {/* Hero */}
-      <section className="relative bg-gradient-to-br from-primary-900 via-primary-800 to-secondary-800 text-white py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-black/20" />
+      <section
+        className="relative text-white py-24 overflow-hidden"
+        style={{
+          backgroundImage: "url('/Carouselimages/Careersimage.png')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-900/80 via-primary-800/75 to-secondary-800/80" />
         <div
           className="absolute top-0 right-0 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl"
           aria-hidden="true"
@@ -242,7 +219,7 @@ const Careers = () => {
             </p>
             <div className="flex flex-wrap gap-4 mt-8">
               <div className="bg-white/10 border border-white/20 rounded-full px-5 py-2 text-sm font-medium">
-                🌍 {OPEN_ROLES.length} open roles
+                🌍 {loading ? "…" : openRoles.length} open roles
               </div>
               <div className="bg-white/10 border border-white/20 rounded-full px-5 py-2 text-sm font-medium">
                 📍 Juba · Wau · Malakal · Remote
@@ -274,17 +251,33 @@ const Careers = () => {
             </p>
           </div>
           <Grid cols={{ base: 1, md: 2, lg: 4 }} gap={6}>
-            {VALUES.map((v) => (
+            {values.map((v) => (
               <Card
                 key={v.title}
-                className="p-6 border-neutral-100 hover:shadow-md hover:border-primary-200 transition-all text-center"
+                className="group relative p-6 border-neutral-100 bg-white overflow-hidden cursor-default
+                  transition-all duration-300 ease-out
+                  hover:-translate-y-2 hover:shadow-xl hover:shadow-primary-100 hover:border-primary-300"
               >
-                <CardContent>
-                  <div className="text-4xl mb-3">{v.emoji}</div>
-                  <h3 className="font-bold text-neutral-900 mb-2">{v.title}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed">
+                {/* Subtle gradient wash on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary-50/0 to-primary-100/0 group-hover:from-primary-50/60 group-hover:to-primary-100/30 transition-all duration-300 pointer-events-none rounded-xl" />
+                <CardContent className="relative">
+                  <div
+                    className={`w-12 h-12 ${v.color} rounded-xl flex items-center justify-center mb-4
+                      transition-all duration-300 group-hover:scale-110 group-hover:rounded-2xl group-hover:shadow-md`}
+                  >
+                    <Icon
+                      name={v.icon}
+                      className="w-6 h-6 transition-transform duration-300 group-hover:scale-110"
+                    />
+                  </div>
+                  <h3 className="font-bold text-neutral-900 mb-2 transition-colors duration-300 group-hover:text-primary-700">
+                    {v.title}
+                  </h3>
+                  <p className="text-sm text-neutral-500 leading-relaxed transition-colors duration-300 group-hover:text-neutral-600">
                     {v.body}
                   </p>
+                  {/* Bottom accent line */}
+                  <div className="absolute bottom-0 left-0 h-0.5 w-0 bg-primary-500 group-hover:w-full transition-all duration-500 ease-out rounded-b-xl" />
                 </CardContent>
               </Card>
             ))}
@@ -307,21 +300,33 @@ const Careers = () => {
             </h2>
           </div>
           <Grid cols={{ base: 1, md: 2, lg: 3 }} gap={6}>
-            {BENEFITS.map((b) => (
+            {benefits.map((b) => (
               <Card
                 key={b.title}
-                className="p-6 bg-white border-neutral-100 hover:shadow-md transition-all"
+                className="group relative p-6 bg-white border-neutral-100 overflow-hidden cursor-default
+                  transition-all duration-300 ease-out
+                  hover:-translate-y-2 hover:shadow-xl hover:shadow-primary-100 hover:border-primary-300"
               >
-                <CardContent>
+                {/* Subtle gradient wash on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-primary-50/0 to-primary-100/0 group-hover:from-primary-50/60 group-hover:to-primary-100/30 transition-all duration-300 pointer-events-none rounded-xl" />
+                <CardContent className="relative">
                   <div
-                    className={`w-12 h-12 ${b.color} rounded-xl flex items-center justify-center mb-4`}
+                    className={`w-12 h-12 ${b.color} rounded-xl flex items-center justify-center mb-4
+                      transition-all duration-300 group-hover:scale-110 group-hover:rounded-2xl group-hover:shadow-md`}
                   >
-                    <Icon name={b.icon} className="w-6 h-6" />
+                    <Icon
+                      name={b.icon}
+                      className="w-6 h-6 transition-transform duration-300 group-hover:scale-110"
+                    />
                   </div>
-                  <h3 className="font-bold text-neutral-900 mb-2">{b.title}</h3>
-                  <p className="text-sm text-neutral-500 leading-relaxed">
+                  <h3 className="font-bold text-neutral-900 mb-2 transition-colors duration-300 group-hover:text-primary-700">
+                    {b.title}
+                  </h3>
+                  <p className="text-sm text-neutral-500 leading-relaxed transition-colors duration-300 group-hover:text-neutral-600">
                     {b.description}
                   </p>
+                  {/* Bottom accent line */}
+                  <div className="absolute bottom-0 left-0 h-0.5 w-0 bg-primary-500 group-hover:w-full transition-all duration-500 ease-out rounded-b-xl" />
                 </CardContent>
               </Card>
             ))}
@@ -365,7 +370,7 @@ const Careers = () => {
           </div>
 
           <div className="flex flex-wrap gap-2 mb-10">
-            {DEPARTMENTS.map((dept) => (
+            {departments.map((dept) => (
               <button
                 key={dept}
                 onClick={() => setActiveDept(dept)}
@@ -380,7 +385,30 @@ const Careers = () => {
             ))}
           </div>
 
-          {filtered.length > 0 ? (
+          {/* Notice banner when DB returned a message */}
+          {rolesNotice && (
+            <div className="mb-6 flex items-start gap-3 bg-warning-50 border border-warning-200 text-warning-800 rounded-xl px-5 py-4 text-sm">
+              <Icon name="clock" className="w-5 h-5 flex-shrink-0 mt-0.5" />
+              <span>{rolesNotice}</span>
+            </div>
+          )}
+
+          {/* Loading skeleton */}
+          {loading ? (
+            <div className="space-y-4">
+              {[1, 2, 3].map((n) => (
+                <div
+                  key={n}
+                  className="p-6 border border-neutral-100 rounded-xl animate-pulse bg-white"
+                >
+                  <div className="h-5 w-1/3 bg-neutral-200 rounded mb-3" />
+                  <div className="h-4 w-1/4 bg-neutral-100 rounded mb-4" />
+                  <div className="h-3 w-full bg-neutral-100 rounded mb-2" />
+                  <div className="h-3 w-5/6 bg-neutral-100 rounded" />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length > 0 ? (
             <div className="space-y-4">
               {filtered.map((role) => (
                 <Card
@@ -429,20 +457,13 @@ const Careers = () => {
                         </div>
                       </div>
                       <div className="flex-shrink-0">
-                        {applied === role.id ? (
-                          <div className="flex items-center gap-2 bg-success-50 text-success-700 border border-success-200 rounded-xl px-5 py-3 font-semibold text-sm">
-                            <Icon name="checkCircle" className="w-4 h-4" />
-                            Applied!
-                          </div>
-                        ) : (
-                          <Button
-                            size="md"
-                            onClick={() => setApplied(role.id)}
-                            className="bg-primary-600 hover:bg-primary-700 text-white font-bold whitespace-nowrap"
-                          >
-                            Apply Now
-                          </Button>
-                        )}
+                        <Button
+                          size="md"
+                          onClick={() => handleApplyClick(role)}
+                          className="bg-primary-600 hover:bg-primary-700 text-white font-bold whitespace-nowrap"
+                        >
+                          Apply Now
+                        </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -486,13 +507,13 @@ const Careers = () => {
                 and a short note about how you'd contribute to our mission — we
                 read every one.
               </p>
-              <a href="mailto:careers@afrapay.com">
+              <a href="mailto:careers@afrapayafrica.com">
                 <Button
                   size="lg"
                   className="bg-primary-600 hover:bg-primary-700 text-white font-bold"
                 >
                   <Icon name="mail" className="w-5 h-5 inline mr-2" />
-                  careers@afrapay.com
+                  careers@afrapayafrica.com
                 </Button>
               </a>
             </CardContent>
@@ -540,6 +561,13 @@ const Careers = () => {
           </div>
         </Container>
       </Section>
+
+      {/* Application Form Modal */}
+      <ApplicationFormModal
+        isOpen={applicationModal.isOpen}
+        onClose={handleCloseModal}
+        role={applicationModal.role}
+      />
     </div>
   );
 };

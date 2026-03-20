@@ -15,6 +15,26 @@ import React, {
 } from "react";
 import { authAPI, userAPI } from "../services/api";
 import toast from "react-hot-toast";
+import { loadLocale, STORAGE_KEY } from "../i18n";
+import i18n from "../i18n";
+
+// ── Language restore helper ──────────────────────────────────────────────────
+/**
+ * When a user's profile carries a preferredLanguage, apply it once on login.
+ * Respects localStorage: if the user has locally overridden the language we
+ * honour that choice rather than overwriting it.
+ */
+const applyUserPreferredLanguage = async (userData) => {
+  const backendLang = userData?.preferredLanguage;
+  if (!backendLang) return;
+  const localLang = localStorage.getItem(STORAGE_KEY);
+  // Do not override a locally-explicit choice
+  if (localLang && localLang !== "en") return;
+  if (backendLang === i18n.language) return;
+  await loadLocale(backendLang);
+  await i18n.changeLanguage(backendLang);
+  localStorage.setItem(STORAGE_KEY, backendLang);
+};
 
 const AuthContext = createContext({
   user: null,
@@ -65,6 +85,8 @@ export const AuthProvider = ({ children }) => {
           setUser(res.data);
           localStorage.setItem("user", JSON.stringify(res.data));
           setIsAuthenticated(true);
+          // Restore preferred language from backend profile (fire-and-forget)
+          applyUserPreferredLanguage(res.data);
         } else {
           localStorage.removeItem("user");
           setUser(null);
@@ -102,6 +124,7 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem("user", JSON.stringify(userData));
           setUser(userData);
           setIsAuthenticated(true);
+          applyUserPreferredLanguage(userData);
         }
         toast.success("Successfully logged in!");
         return response.data;

@@ -4,7 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { authAPI, userAPI } from "../services/api";
+import { useCurrency } from "../contexts/CurrencyContext";
+import { SUPPORTED_CURRENCIES } from "../utils/currency";
 import toast from "react-hot-toast";
+import LanguageSwitcher from "../components/common/LanguageSwitcher";
+import { useLanguage } from "../hooks/useLanguage";
 
 // ---------------------------------------------------------------------------
 // Dark-mode helpers
@@ -1102,13 +1106,183 @@ const DeleteAccountSection = ({ onAccountDeleted }) => {
 };
 
 // ---------------------------------------------------------------------------
+// Currency / Regional section
+// ---------------------------------------------------------------------------
+const CurrencySection = () => {
+  const { currency, setCurrency } = useCurrency();
+  const [selected, setSelected] = useState(currency);
+
+  // Keep local state in sync if currency changes elsewhere (e.g. login)
+  useEffect(() => {
+    setSelected(currency);
+  }, [currency]);
+
+  const handleSave = () => {
+    if (selected === currency) return;
+    setCurrency(selected);
+    toast.success(`Display currency set to ${selected}`);
+  };
+
+  return (
+    <SectionCard
+      title="Currency & Region"
+      description="Choose the currency used to display your balances and transactions."
+    >
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {SUPPORTED_CURRENCIES.map((c) => {
+            const active = selected === c.code;
+            return (
+              <button
+                key={c.code}
+                type="button"
+                onClick={() => setSelected(c.code)}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-all text-left ${
+                  active
+                    ? "border-primary-500 bg-primary-50 dark:bg-primary-900/20 text-primary-700 dark:text-primary-300"
+                    : "border-neutral-200 dark:border-neutral-600 text-neutral-700 dark:text-neutral-300 hover:border-neutral-300 dark:hover:border-neutral-500 bg-white dark:bg-neutral-800"
+                }`}
+              >
+                <span className="text-base leading-none">{c.flag}</span>
+                <span className="flex flex-col min-w-0">
+                  <span className="font-semibold truncate">{c.code}</span>
+                  <span className="text-xs text-neutral-400 dark:text-neutral-500 truncate">
+                    {c.symbol} · {c.name}
+                  </span>
+                </span>
+                {active && (
+                  <svg
+                    className="w-3.5 h-3.5 ml-auto text-primary-500 flex-shrink-0"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={selected === currency}
+          className={btnPrimary}
+        >
+          Save Currency Preference
+        </button>
+
+        <p className="text-xs text-neutral-500 dark:text-neutral-400">
+          This only affects how amounts are displayed in the app. It does not
+          convert your actual funds.
+        </p>
+      </div>
+    </SectionCard>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Main Settings page
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Language section
+// ---------------------------------------------------------------------------
+const LanguageSection = () => {
+  const { language, currentMeta, t } = useLanguage({ syncBackend: true });
+
+  return (
+    <SectionCard
+      title={t("settings.language")}
+      description={t("settings.languageDesc")}
+    >
+      {/* Active locale badge */}
+      <div className="flex items-center gap-3 p-3 rounded-lg bg-primary-50 dark:bg-primary-900/20 border border-primary-200 dark:border-primary-800 mb-4">
+        <span className="text-2xl leading-none">{currentMeta.flag}</span>
+        <div>
+          <p className="font-semibold text-sm text-primary-800 dark:text-primary-200">
+            {currentMeta.nativeName}
+          </p>
+          <p className="text-xs text-primary-600 dark:text-primary-400">
+            {currentMeta.englishName}
+            {currentMeta.dir === "rtl" && (
+              <span className="ml-2 px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wide">
+                RTL
+              </span>
+            )}
+          </p>
+        </div>
+        <svg
+          className="w-4 h-4 text-primary-500 ml-auto"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2.5}
+            d="M5 13l4 4L19 7"
+          />
+        </svg>
+      </div>
+
+      {/* Language grid picker */}
+      <LanguageSwitcher variant="settings" syncBackend />
+
+      {/* Language-change callback via local handler for toast */}
+      <div className="hidden">
+        {/* Invisible — actual switching is done by clicking LanguageSwitcher above */}
+      </div>
+
+      {/* RTL notice */}
+      {language === "ar-juba" && (
+        <div className="mt-4 flex items-start gap-2 p-3 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+          <svg
+            className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <p className="text-xs text-amber-700 dark:text-amber-400">
+            عربي جوبا مكتوب من اليمين لليسار. الصفحة هتتبدل تلقائياً.
+            <span className="block text-amber-600 dark:text-amber-500 mt-0.5">
+              Juba Arabic uses a right-to-left layout — the app will switch
+              direction automatically.
+            </span>
+          </p>
+        </div>
+      )}
+    </SectionCard>
+  );
+};
+
 const TABS = [
+  {
+    id: "language",
+    label: "Language",
+    icon: "M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129",
+  },
   {
     id: "appearance",
     label: "Appearance",
     icon: "M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z",
+  },
+  {
+    id: "regional",
+    label: "Regional",
+    icon: "M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3",
   },
   {
     id: "security",
@@ -1125,7 +1299,7 @@ const TABS = [
 const Settings = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("appearance");
+  const [activeTab, setActiveTab] = useState("language");
   const [profile, setProfile] = useState(null);
 
   // Apply stored theme on mount
@@ -1201,7 +1375,11 @@ const Settings = () => {
 
         {/* Tab content */}
         <div className="space-y-5">
+          {activeTab === "language" && <LanguageSection />}
+
           {activeTab === "appearance" && <AppearanceSection />}
+
+          {activeTab === "regional" && <CurrencySection />}
 
           {activeTab === "security" && (
             <>

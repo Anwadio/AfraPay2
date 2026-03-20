@@ -3,14 +3,14 @@
  * Handles user profile management, document uploads, and verification
  */
 
-const { Client, Users, Storage, Databases, ID } = require('node-appwrite');
-const config = require('../config/environment');
-const logger = require('../utils/logger');
-const { 
-  ValidationError, 
-  NotFoundError, 
-  ConflictError 
-} = require('../middleware/monitoring/errorHandler');
+const { Client, Users, Storage, Databases, ID } = require("node-appwrite");
+const config = require("../config/environment");
+const logger = require("../utils/logger");
+const {
+  ValidationError,
+  NotFoundError,
+  ConflictError,
+} = require("../middleware/monitoring/errorHandler");
 
 // Initialize Appwrite clients
 const client = new Client()
@@ -30,7 +30,7 @@ class UserController {
     try {
       const { user } = req;
       const userDetails = await users.get(user.id);
-      
+
       const profile = {
         id: userDetails.$id,
         email: userDetails.email,
@@ -44,21 +44,21 @@ class UserController {
         location: userDetails.labels.location,
         avatar: userDetails.labels.avatar,
         role: userDetails.labels.role,
-        kycLevel: parseInt(userDetails.labels.kycLevel || '0'),
+        kycLevel: parseInt(userDetails.labels.kycLevel || "0"),
         emailVerified: userDetails.emailVerification,
         phoneVerified: userDetails.phoneVerification,
-        mfaEnabled: userDetails.labels.mfaEnabled === 'true',
+        mfaEnabled: userDetails.labels.mfaEnabled === "true",
         accountStatus: userDetails.labels.accountStatus,
+        preferredLanguage: userDetails.labels.preferredLanguage || "en",
         createdAt: userDetails.$createdAt,
-        updatedAt: userDetails.$updatedAt
+        updatedAt: userDetails.$updatedAt,
       };
 
-      res.success(profile, 'Profile retrieved successfully');
-
+      res.success(profile, "Profile retrieved successfully");
     } catch (error) {
-      logger.error('Get profile failed', {
+      logger.error("Get profile failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -81,8 +81,18 @@ class UserController {
         state,
         postalCode,
         bio,
-        location
+        location,
+        preferredLanguage,
       } = req.body;
+
+      // Validate preferredLanguage against the supported list (whitelist)
+      const SUPPORTED_LANGUAGES = ["en", "sw", "ar-juba", "fr", "es"];
+      if (
+        preferredLanguage !== undefined &&
+        !SUPPORTED_LANGUAGES.includes(preferredLanguage)
+      ) {
+        throw new ValidationError(`Unsupported language: ${preferredLanguage}`);
+      }
 
       // Build update labels
       const updateLabels = {};
@@ -96,6 +106,7 @@ class UserController {
       if (postalCode) updateLabels.postalCode = postalCode;
       if (bio !== undefined) updateLabels.bio = bio;
       if (location !== undefined) updateLabels.location = location;
+      if (preferredLanguage) updateLabels.preferredLanguage = preferredLanguage;
 
       // Update user labels in Appwrite
       if (Object.keys(updateLabels).length > 0) {
@@ -105,8 +116,8 @@ class UserController {
       // Update name if first or last name changed
       if (firstName || lastName) {
         const currentUser = await users.get(user.id);
-        const currentFirstName = currentUser.labels.firstName || '';
-        const currentLastName = currentUser.labels.lastName || '';
+        const currentFirstName = currentUser.labels.firstName || "";
+        const currentLastName = currentUser.labels.lastName || "";
         const newName = `${firstName || currentFirstName} ${lastName || currentLastName}`;
         await users.updateName(user.id, newName);
       }
@@ -116,18 +127,17 @@ class UserController {
         await users.updatePhone(user.id, phone);
       }
 
-      logger.audit('PROFILE_UPDATED', user.id, {
+      logger.audit("PROFILE_UPDATED", user.id, {
         updatedFields: Object.keys(updateLabels),
         ip: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get("User-Agent"),
       });
 
-      res.success(null, 'Profile updated successfully');
-
+      res.success(null, "Profile updated successfully");
     } catch (error) {
-      logger.error('Update profile failed', {
+      logger.error("Update profile failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -142,7 +152,7 @@ class UserController {
       const file = req.file;
 
       if (!file) {
-        throw new ValidationError('Avatar file is required');
+        throw new ValidationError("Avatar file is required");
       }
 
       // Upload to Appwrite Storage
@@ -152,32 +162,34 @@ class UserController {
         fileId,
         file.buffer,
         file.originalname,
-        ['read("user:' + user.id + '")', 'write("user:' + user.id + '")'] // Permissions
+        ['read("user:' + user.id + '")', 'write("user:' + user.id + '")'], // Permissions
       );
 
       // Update user avatar URL
       const avatarUrl = `${config.database.appwrite.endpoint}/storage/buckets/${config.storage.avatarBucketId}/files/${fileId}/view`;
       await users.updateLabels(user.id, {
         avatar: avatarUrl,
-        avatarFileId: fileId
+        avatarFileId: fileId,
       });
 
-      logger.audit('AVATAR_UPLOADED', user.id, {
+      logger.audit("AVATAR_UPLOADED", user.id, {
         fileId,
         fileName: file.originalname,
         fileSize: file.size,
-        ip: req.ip
+        ip: req.ip,
       });
 
-      res.success({
-        avatarUrl,
-        fileId
-      }, 'Avatar uploaded successfully');
-
+      res.success(
+        {
+          avatarUrl,
+          fileId,
+        },
+        "Avatar uploaded successfully",
+      );
     } catch (error) {
-      logger.error('Avatar upload failed', {
+      logger.error("Avatar upload failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -195,25 +207,24 @@ class UserController {
       if (avatarFileId) {
         // Delete file from storage
         await storage.deleteFile(config.storage.avatarBucketId, avatarFileId);
-        
+
         // Remove avatar from user labels
         await users.updateLabels(user.id, {
-          avatar: '',
-          avatarFileId: ''
+          avatar: "",
+          avatarFileId: "",
         });
 
-        logger.audit('AVATAR_DELETED', user.id, {
+        logger.audit("AVATAR_DELETED", user.id, {
           fileId: avatarFileId,
-          ip: req.ip
+          ip: req.ip,
         });
       }
 
-      res.success(null, 'Avatar deleted successfully');
-
+      res.success(null, "Avatar deleted successfully");
     } catch (error) {
-      logger.error('Avatar deletion failed', {
+      logger.error("Avatar deletion failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -229,7 +240,7 @@ class UserController {
       const file = req.file;
 
       if (!file) {
-        throw new ValidationError('Document file is required');
+        throw new ValidationError("Document file is required");
       }
 
       // Upload document to secure storage
@@ -239,7 +250,7 @@ class UserController {
         fileId,
         file.buffer,
         file.originalname,
-        ['read("user:' + user.id + '")', 'write("user:' + user.id + '")'] // Permissions
+        ['read("user:' + user.id + '")', 'write("user:' + user.id + '")'], // Permissions
       );
 
       // Store document metadata in database
@@ -250,38 +261,40 @@ class UserController {
         fileSize: file.size,
         fileId,
         mimeType: file.mimetype,
-        status: 'pending_review',
+        status: "pending_review",
         uploadedAt: new Date().toISOString(),
-        uploadIP: req.ip
+        uploadIP: req.ip,
       };
 
       const document = await databases.createDocument(
         config.database.appwrite.databaseId,
         config.collections.documentsId,
         ID.unique(),
-        documentRecord
+        documentRecord,
       );
 
-      logger.audit('DOCUMENT_UPLOADED', user.id, {
+      logger.audit("DOCUMENT_UPLOADED", user.id, {
         documentId: document.$id,
         type,
         fileName: file.originalname,
         fileSize: file.size,
-        ip: req.ip
+        ip: req.ip,
       });
 
-      res.success({
-        documentId: document.$id,
-        type,
-        fileName: file.originalname,
-        status: 'pending_review',
-        uploadedAt: document.uploadedAt
-      }, 'Document uploaded successfully');
-
+      res.success(
+        {
+          documentId: document.$id,
+          type,
+          fileName: file.originalname,
+          status: "pending_review",
+          uploadedAt: document.uploadedAt,
+        },
+        "Document uploaded successfully",
+      );
     } catch (error) {
-      logger.error('Document upload failed', {
+      logger.error("Document upload failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -293,14 +306,14 @@ class UserController {
   async getDocuments(req, res) {
     try {
       const { user } = req;
-      
+
       const documents = await databases.listDocuments(
         config.database.appwrite.databaseId,
         config.collections.documentsId,
-        [`userId=${user.id}`]
+        [`userId=${user.id}`],
       );
 
-      const documentList = documents.documents.map(doc => ({
+      const documentList = documents.documents.map((doc) => ({
         id: doc.$id,
         type: doc.type,
         fileName: doc.fileName,
@@ -308,15 +321,14 @@ class UserController {
         status: doc.status,
         uploadedAt: doc.uploadedAt,
         reviewedAt: doc.reviewedAt,
-        reviewNotes: doc.reviewNotes
+        reviewNotes: doc.reviewNotes,
       }));
 
-      res.success(documentList, 'Documents retrieved successfully');
-
+      res.success(documentList, "Documents retrieved successfully");
     } catch (error) {
-      logger.error('Get documents failed', {
+      logger.error("Get documents failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -334,38 +346,40 @@ class UserController {
       const document = await databases.getDocument(
         config.database.appwrite.databaseId,
         config.collections.documentsId,
-        documentId
+        documentId,
       );
 
       // Verify ownership
       if (document.userId !== user.id) {
-        throw new NotFoundError('Document');
+        throw new NotFoundError("Document");
       }
 
       // Delete file from storage
-      await storage.deleteFile(config.storage.documentsBucketId, document.fileId);
-      
+      await storage.deleteFile(
+        config.storage.documentsBucketId,
+        document.fileId,
+      );
+
       // Delete document record
       await databases.deleteDocument(
         config.database.appwrite.databaseId,
         config.collections.documentsId,
-        documentId
+        documentId,
       );
 
-      logger.audit('DOCUMENT_DELETED', user.id, {
+      logger.audit("DOCUMENT_DELETED", user.id, {
         documentId,
         type: document.type,
         fileName: document.fileName,
-        ip: req.ip
+        ip: req.ip,
       });
 
-      res.success(null, 'Document deleted successfully');
-
+      res.success(null, "Document deleted successfully");
     } catch (error) {
-      logger.error('Document deletion failed', {
+      logger.error("Document deletion failed", {
         userId: req.user?.id,
         documentId: req.params.documentId,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -378,25 +392,29 @@ class UserController {
     try {
       const { user } = req;
       const userDetails = await users.get(user.id);
-      
+
       const verificationStatus = {
-        kycLevel: parseInt(userDetails.labels.kycLevel || '0'),
+        kycLevel: parseInt(userDetails.labels.kycLevel || "0"),
         emailVerified: userDetails.emailVerification,
         phoneVerified: userDetails.phoneVerification,
         documentsStatus: {
-          id: userDetails.labels.idDocumentStatus || 'not_provided',
-          passport: userDetails.labels.passportStatus || 'not_provided',
-          utilityBill: userDetails.labels.utilityBillStatus || 'not_provided'
+          id: userDetails.labels.idDocumentStatus || "not_provided",
+          passport: userDetails.labels.passportStatus || "not_provided",
+          utilityBill: userDetails.labels.utilityBillStatus || "not_provided",
         },
-        verificationLimits: this.getVerificationLimits(parseInt(userDetails.labels.kycLevel || '0'))
+        verificationLimits: this.getVerificationLimits(
+          parseInt(userDetails.labels.kycLevel || "0"),
+        ),
       };
 
-      res.success(verificationStatus, 'Verification status retrieved successfully');
-
+      res.success(
+        verificationStatus,
+        "Verification status retrieved successfully",
+      );
     } catch (error) {
-      logger.error('Get verification status failed', {
+      logger.error("Get verification status failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -409,36 +427,40 @@ class UserController {
     try {
       const { user } = req;
       const userDetails = await users.get(user.id);
-      const currentKYCLevel = parseInt(userDetails.labels.kycLevel || '0');
-      
+      const currentKYCLevel = parseInt(userDetails.labels.kycLevel || "0");
+
       // Check if user can request higher verification level
       if (currentKYCLevel >= 3) {
-        throw new ValidationError('Account is already at maximum verification level');
+        throw new ValidationError(
+          "Account is already at maximum verification level",
+        );
       }
 
       // Update verification request status
       await users.updateLabels(user.id, {
-        verificationRequested: 'true',
+        verificationRequested: "true",
         verificationRequestedAt: new Date().toISOString(),
-        verificationStatus: 'under_review'
+        verificationStatus: "under_review",
       });
 
-      logger.audit('VERIFICATION_REQUESTED', user.id, {
+      logger.audit("VERIFICATION_REQUESTED", user.id, {
         currentKYCLevel,
         requestedLevel: currentKYCLevel + 1,
-        ip: req.ip
+        ip: req.ip,
       });
 
-      res.success({
-        verificationStatus: 'under_review',
-        requestedLevel: currentKYCLevel + 1,
-        estimatedReviewTime: '2-3 business days'
-      }, 'Verification request submitted successfully');
-
+      res.success(
+        {
+          verificationStatus: "under_review",
+          requestedLevel: currentKYCLevel + 1,
+          estimatedReviewTime: "2-3 business days",
+        },
+        "Verification request submitted successfully",
+      );
     } catch (error) {
-      logger.error('Verification request failed', {
+      logger.error("Verification request failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -451,22 +473,25 @@ class UserController {
     try {
       const { user } = req;
       const { page = 1, limit = 20 } = req.query;
-      
+
       // TODO: Implement activity log retrieval from database
       // This would typically query an activity_logs collection
       const activities = [];
-      
-      res.paginated(activities, {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalItems: 0,
-        totalPages: 0
-      }, 'Activity log retrieved successfully');
 
+      res.paginated(
+        activities,
+        {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalItems: 0,
+          totalPages: 0,
+        },
+        "Activity log retrieved successfully",
+      );
     } catch (error) {
-      logger.error('Get activity log failed', {
+      logger.error("Get activity log failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -481,23 +506,27 @@ class UserController {
       const { notifications, privacy, security } = req.body;
 
       const updateLabels = {};
-      if (notifications) updateLabels.notificationPreferences = JSON.stringify(notifications);
+      if (notifications)
+        updateLabels.notificationPreferences = JSON.stringify(notifications);
       if (privacy) updateLabels.privacySettings = JSON.stringify(privacy);
       if (security) updateLabels.securitySettings = JSON.stringify(security);
 
       await users.updateLabels(user.id, updateLabels);
 
-      logger.audit('PREFERENCES_UPDATED', user.id, {
-        updatedPreferences: Object.keys({ notifications, privacy, security }).filter(key => req.body[key]),
-        ip: req.ip
+      logger.audit("PREFERENCES_UPDATED", user.id, {
+        updatedPreferences: Object.keys({
+          notifications,
+          privacy,
+          security,
+        }).filter((key) => req.body[key]),
+        ip: req.ip,
       });
 
-      res.success(null, 'Preferences updated successfully');
-
+      res.success(null, "Preferences updated successfully");
     } catch (error) {
-      logger.error('Update preferences failed', {
+      logger.error("Update preferences failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -513,31 +542,33 @@ class UserController {
 
       // Verify password
       const userDetails = await users.get(user.id);
-      const isPasswordValid = await bcrypt.compare(password, userDetails.password);
-      
+      const isPasswordValid = await bcrypt.compare(
+        password,
+        userDetails.password,
+      );
+
       if (!isPasswordValid) {
-        throw new ValidationError('Invalid password');
+        throw new ValidationError("Invalid password");
       }
 
       // Soft delete by updating status
       await users.updateLabels(user.id, {
-        accountStatus: 'deleted',
+        accountStatus: "deleted",
         deletedAt: new Date().toISOString(),
-        deletionReason: 'user_requested'
+        deletionReason: "user_requested",
       });
 
-      logger.audit('ACCOUNT_DELETED', user.id, {
-        deletionReason: 'user_requested',
+      logger.audit("ACCOUNT_DELETED", user.id, {
+        deletionReason: "user_requested",
         ip: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get("User-Agent"),
       });
 
-      res.success(null, 'Account deleted successfully');
-
+      res.success(null, "Account deleted successfully");
     } catch (error) {
-      logger.error('Account deletion failed', {
+      logger.error("Account deletion failed", {
         userId: req.user?.id,
-        error: error.message
+        error: error.message,
       });
       throw error;
     }
@@ -549,9 +580,9 @@ class UserController {
       0: { dailyLimit: 100, monthlyLimit: 1000 },
       1: { dailyLimit: 1000, monthlyLimit: 10000 },
       2: { dailyLimit: 5000, monthlyLimit: 50000 },
-      3: { dailyLimit: 25000, monthlyLimit: 250000 }
+      3: { dailyLimit: 25000, monthlyLimit: 250000 },
     };
-    
+
     return limits[kycLevel] || limits[0];
   }
 }

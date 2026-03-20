@@ -30,6 +30,10 @@ const { addToBlacklist, isBlacklisted } = require("../utils/tokenBlacklist");
 // Resend-backed email service
 const emailService = require("../services/emailService");
 
+// In-app notification helper (lazy require to break circular-dependency risk)
+const getCreateNotification = () =>
+  require("./notificationController").createNotification;
+
 // ---------------------------------------------------------------------------
 // In-process session store. For multi-server/multi-process deployments replace
 // with a shared Redis store (the ioredis client is already wired in the project).
@@ -498,6 +502,39 @@ class AuthController {
 
       // Step 11: Set secure cookies
       this.setTokenCookies(res, tokens, rememberMe);
+
+      // ── Login alert: notify user if they have loginAlerts enabled ────────
+      // Fire-and-forget — never block or error the login response
+      setImmediate(async () => {
+        try {
+          const loginAlertsEnabled = user.prefs?.loginAlerts === "true";
+          if (loginAlertsEnabled) {
+            const ua = req.get("User-Agent") || "Unknown device";
+            const ipAddr = req.ip || "Unknown";
+            const loginInfo = {
+              ip: ipAddr,
+              device: ua.length > 80 ? ua.slice(0, 80) + "…" : ua,
+              time: new Date().toISOString(),
+            };
+            const firstName = (user.name || email).split(" ")[0];
+            // In-app notification
+            await getCreateNotification()(
+              userId,
+              "security",
+              "New sign-in to your account",
+              `Sign-in from ${loginInfo.device} (${loginInfo.ip})`,
+              "/settings/security",
+            );
+            // Email notification
+            await emailService.sendLoginAlertEmail(email, firstName, loginInfo);
+          }
+        } catch (alertErr) {
+          logger.warn("Login alert dispatch failed (non-fatal)", {
+            userId,
+            error: alertErr.message,
+          });
+        }
+      });
 
       res.success(
         {
@@ -2316,4 +2353,8 @@ class AuthController {
   }
 }
 
-module.exports = new AuthController();
+const authControllerInstance = new AuthController();
+module.exports = authControllerInstance;
+// Export the session store so other controllers (e.g. profileController) can
+// read and revoke sessions without the Map being duplicated.
+module.exports.activeSessions = activeSessions;
