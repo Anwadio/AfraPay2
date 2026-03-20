@@ -14,7 +14,9 @@ const fs = require("fs");
 const path = require("path");
 
 // ── Configuration ──────────────────────────────────────────────────────────
-const BASE_URL = "https://www.afrapay.com";
+// Use environment variable for production or fallback to development URL
+const BASE_URL =
+  process.env.REACT_APP_BASE_URL || "https://www.afrapayafrica.com";
 const OUTPUT_PATH = path.resolve(__dirname, "../public/sitemap.xml");
 const TODAY = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
@@ -96,6 +98,7 @@ try {
   fs.writeFileSync(OUTPUT_PATH, xml, "utf-8");
   console.log(`✅  Sitemap written to ${OUTPUT_PATH}`);
   console.log(`    ${ROUTES.length} URLs included`);
+  console.log(`    Base URL: ${BASE_URL}`);
 } catch (err) {
   console.error("❌  Failed to write sitemap:", err.message);
   process.exit(1);
