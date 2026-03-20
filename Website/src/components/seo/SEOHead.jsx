@@ -18,12 +18,12 @@ import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
 // ── Constants ──────────────────────────────────────────────────────────────
-export const SITE_BASE_URL = "https://www.afrapay.com";
+export const SITE_BASE_URL = "https://www.afrapayafrica.com";
 export const SITE_NAME = "AfraPay";
 export const DEFAULT_TITLE = "AfraPay – Secure Payments Across Africa";
 export const DEFAULT_DESCRIPTION =
   "AfraPay enables secure global payments, business tills, and fast mobile transfers across Africa. Send, receive, and manage money with confidence.";
-export const DEFAULT_OG_IMAGE = `${SITE_BASE_URL}/og-image.png`;
+export const DEFAULT_OG_IMAGE = `${SITE_BASE_URL}/mainlogo.png`;
 export const TWITTER_HANDLE = "@AfraPay";
 
 // ── Helper: upsert a <meta> element ───────────────────────────────────────
