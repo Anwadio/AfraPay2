@@ -91,6 +91,9 @@ const envSchema = Joi.object({
   APPWRITE_APPLICATIONS_COLLECTION_ID: Joi.string().allow("").default(""),
   APPWRITE_BLOG_COLLECTION_ID: Joi.string().allow("").default(""),
   APPWRITE_USER_CARDS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_MERCHANTS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_TILLS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_DOCUMENTS_COLLECTION_ID: Joi.string().allow("").default(""),
 
   // Redis Configuration
   REDIS_HOST: Joi.string().default("localhost"),
@@ -431,6 +434,35 @@ const config = {
     swagger: env.ENABLE_SWAGGER,
     websockets: env.ENABLE_WEBSOCKETS,
     rateLimiting: env.ENABLE_RATE_LIMITING,
+  },
+
+  // Collection ID mappings for backward compatibility with admin controller
+  collections: {
+    usersId: env.APPWRITE_USER_COLLECTION_ID,
+    transactionsId: env.APPWRITE_TRANSACTIONS_COLLECTION_ID,
+    paymentsId: env.APPWRITE_PAYMENTS_COLLECTION_ID,
+    walletsId: env.APPWRITE_WALLETS_COLLECTION_ID,
+    disputesId: env.APPWRITE_DISPUTES_COLLECTION_ID,
+    merchantsId: env.APPWRITE_MERCHANTS_COLLECTION_ID || "",
+    tillsId: env.APPWRITE_TILLS_COLLECTION_ID || "",
+    cardsId: env.APPWRITE_USER_CARDS_COLLECTION_ID || "",
+    documentsId: env.APPWRITE_DOCUMENTS_COLLECTION_ID || "",
+    blogId: env.APPWRITE_BLOG_COLLECTION_ID || "",
+    careersId: env.APPWRITE_CAREERS_COLLECTION_ID || "",
+    applicationsId: env.APPWRITE_APPLICATIONS_COLLECTION_ID || "",
+    chatSessionsId: env.APPWRITE_CHAT_SESSIONS_COLLECTION_ID || "",
+    chatMessagesId: env.APPWRITE_CHAT_MESSAGES_COLLECTION_ID || "",
+    notificationsId: env.APPWRITE_NOTIFICATIONS_COLLECTION_ID || "",
+    supportTicketsId: env.APPWRITE_SUPPORT_TICKETS_COLLECTION_ID || "",
+    supportMessagesId: env.APPWRITE_SUPPORT_MESSAGES_COLLECTION_ID || "",
+    newsletterId: env.APPWRITE_NEWSLETTER_COLLECTION_ID || "",
+    educationContentId: env.APPWRITE_EDUCATION_CONTENT_COLLECTION_ID || "",
+    educationCategoriesId:
+      env.APPWRITE_EDUCATION_CATEGORIES_COLLECTION_ID || "",
+    learningPathsId: env.APPWRITE_LEARNING_PATHS_COLLECTION_ID || "",
+    enrollmentsId: env.APPWRITE_ENROLLMENTS_COLLECTION_ID || "",
+    progressId: env.APPWRITE_PROGRESS_COLLECTION_ID || "",
+    bookmarksId: env.APPWRITE_BOOKMARKS_COLLECTION_ID || "",
   },
 
   // Webhook shared secrets — used for HMAC signature verification.

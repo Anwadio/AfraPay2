@@ -41,4 +41,4 @@ Disallow: /static/
 Disallow: /api/
 
 # ── Sitemap location ───────────────────────────────────────
-Sitemap: https://www.afrapay.com/sitemap.xml
+Sitemap: https://www.afrapayafrica.com/sitemap.xml

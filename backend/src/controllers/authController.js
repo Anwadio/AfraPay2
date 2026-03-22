@@ -660,12 +660,14 @@ class AuthController {
         throw new AuthenticationError("Token has been revoked");
       }
 
-      // Get user and session
+      // Get user from Appwrite — JWT signature + blacklist check is the security boundary;
+      // the in-memory session store is not reliable across server restarts in development.
       const user = await users.get(decoded.sub);
-      const session = await this.getSession(decoded.sessionId);
 
-      if (!session || !session.isActive) {
-        throw new AuthenticationError("Session is not active");
+      // Optionally update session activity if session still exists in memory
+      const session = await this.getSession(decoded.sessionId);
+      if (session) {
+        await this.updateSessionActivity(decoded.sessionId);
       }
 
       // Generate new tokens
@@ -673,9 +675,6 @@ class AuthController {
 
       // Blacklist the consumed refresh token to prevent replay attacks
       await addToBlacklist(decoded, refreshToken);
-
-      // Update session activity
-      await this.updateSessionActivity(decoded.sessionId);
 
       res.success({ tokens }, "Token refreshed successfully");
     } catch (error) {

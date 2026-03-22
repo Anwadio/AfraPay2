@@ -30,15 +30,15 @@ const userIdValidation = [
 
 const paginationValidation = [
   query("page")
-    .optional()
+    .optional({ checkFalsy: true })
     .isInt({ min: 1 })
     .withMessage("Page must be a positive integer"),
   query("limit")
-    .optional()
+    .optional({ checkFalsy: true })
     .isInt({ min: 1, max: 100 })
     .withMessage("Limit must be between 1 and 100"),
   query("search")
-    .optional()
+    .optional({ checkFalsy: true })
     .trim()
     .isLength({ min: 1, max: 100 })
     .withMessage("Search term must be between 1 and 100 characters"),
@@ -95,15 +95,15 @@ router.get(
 router.get(
   "/users",
   query("status")
-    .optional()
+    .optional({ checkFalsy: true })
     .isIn(["active", "inactive", "suspended", "blocked"])
     .withMessage("Invalid status filter"),
   query("verified")
-    .optional()
+    .optional({ checkFalsy: true })
     .isBoolean()
     .withMessage("Verified must be a boolean"),
   query("role")
-    .optional()
+    .optional({ checkFalsy: true })
     .isIn(["user", "merchant", "agent"])
     .withMessage("Invalid role filter"),
   paginationValidation,
