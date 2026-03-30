@@ -93,7 +93,14 @@ const envSchema = Joi.object({
   APPWRITE_USER_CARDS_COLLECTION_ID: Joi.string().allow("").default(""),
   APPWRITE_MERCHANTS_COLLECTION_ID: Joi.string().allow("").default(""),
   APPWRITE_TILLS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_MERCHANT_WALLETS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_PAYOUTS_COLLECTION_ID: Joi.string().allow("").default(""),
   APPWRITE_DOCUMENTS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_AUDIT_LOGS_COLLECTION: Joi.string().allow("").default(""),
+  APPWRITE_FRAUD_FLAGS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_SUBSCRIPTION_PLANS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_SUBSCRIPTIONS_COLLECTION_ID: Joi.string().allow("").default(""),
+  APPWRITE_BILLING_HISTORY_COLLECTION_ID: Joi.string().allow("").default(""),
 
   // Redis Configuration
   REDIS_HOST: Joi.string().default("localhost"),
@@ -140,6 +147,9 @@ const envSchema = Joi.object({
   // Facebook OAuth
   FACEBOOK_APP_ID: Joi.string().allow("").default(""),
   FACEBOOK_APP_SECRET: Joi.string().allow("").default(""),
+
+  // Expo Push Notifications
+  EXPO_ACCESS_TOKEN: Joi.string().allow("").default(""),
 
   // Payment Gateways
   STRIPE_SECRET_KEY: Joi.string().allow(""),
@@ -288,6 +298,17 @@ const config = {
       careersCollectionId: env.APPWRITE_CAREERS_COLLECTION_ID || "",
       applicationsCollectionId: env.APPWRITE_APPLICATIONS_COLLECTION_ID || "",
       userCardsCollectionId: env.APPWRITE_USER_CARDS_COLLECTION_ID || "",
+      auditLogsCollectionId: env.APPWRITE_AUDIT_LOGS_COLLECTION || "",
+      fraudFlagsCollectionId: env.APPWRITE_FRAUD_FLAGS_COLLECTION_ID || "",
+      subscriptionPlansCollectionId:
+        env.APPWRITE_SUBSCRIPTION_PLANS_COLLECTION_ID || "",
+      subscriptionsCollectionId: env.APPWRITE_SUBSCRIPTIONS_COLLECTION_ID || "",
+      billingHistoryCollectionId:
+        env.APPWRITE_BILLING_HISTORY_COLLECTION_ID || "",
+      merchantsCollectionId: env.APPWRITE_MERCHANTS_COLLECTION_ID || "",
+      merchantWalletsCollectionId:
+        env.APPWRITE_MERCHANT_WALLETS_COLLECTION_ID || "",
+      payoutsCollectionId: env.APPWRITE_PAYOUTS_COLLECTION_ID || "",
     },
     redis: {
       host: env.REDIS_HOST,
@@ -371,6 +392,9 @@ const config = {
     facebook: {
       appId: env.FACEBOOK_APP_ID || "",
       appSecret: env.FACEBOOK_APP_SECRET || "",
+    },
+    expo: {
+      accessToken: env.EXPO_ACCESS_TOKEN || "",
     },
     stripe: {
       secretKey: env.STRIPE_SECRET_KEY,
@@ -463,6 +487,8 @@ const config = {
     enrollmentsId: env.APPWRITE_ENROLLMENTS_COLLECTION_ID || "",
     progressId: env.APPWRITE_PROGRESS_COLLECTION_ID || "",
     bookmarksId: env.APPWRITE_BOOKMARKS_COLLECTION_ID || "",
+    auditLogsId: env.APPWRITE_AUDIT_LOGS_COLLECTION || "",
+    fraudFlagsId: env.APPWRITE_FRAUD_FLAGS_COLLECTION_ID || "",
   },
 
   // Webhook shared secrets — used for HMAC signature verification.

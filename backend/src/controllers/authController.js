@@ -34,6 +34,10 @@ const emailService = require("../services/emailService");
 const getCreateNotification = () =>
   require("./notificationController").createNotification;
 
+// Admin notification helper
+const getCreateAdminNotification = () =>
+  require("../services/notificationService").createAdminNotification;
+
 // ---------------------------------------------------------------------------
 // In-process session store. For multi-server/multi-process deployments replace
 // with a shared Redis store (the ioredis client is already wired in the project).
@@ -291,6 +295,16 @@ class AuthController {
           ip: req.ip,
           userAgent: req.get("User-Agent"),
           deviceFingerprint: this.generateDeviceFingerprint(req),
+        });
+
+        // Step 11: Notify admins of the new sign-up (fire-and-forget)
+        setImmediate(() => {
+          getCreateAdminNotification()(
+            "user_signup",
+            "New User Registered",
+            `${firstName} ${lastName} (${email}) has created an account.`,
+            { link: `/users/${userId}` },
+          ).catch(() => {});
         });
 
         res.created(

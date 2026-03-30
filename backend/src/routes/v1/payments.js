@@ -359,6 +359,36 @@ router.get(
 );
 
 /**
+ * @route   POST /api/v1/payments/charge-card
+ * @desc    Charge a saved card and credit the user's wallet
+ * @access  Private
+ *
+ * Required header: Idempotency-Key: <uuid-v4>
+ * Body: { cardId: string, amount: number, currency: string }
+ */
+router.post(
+  "/charge-card",
+  authenticate,
+  paymentLimiter,
+  idempotency,
+  [
+    body("cardId")
+      .trim()
+      .isLength({ min: 1, max: 36 })
+      .matches(/^[a-zA-Z0-9_-]+$/)
+      .withMessage("Valid card ID is required"),
+    body("amount")
+      .isFloat({ min: 1, max: 1_000_000 })
+      .withMessage("Amount must be between 1 and 1,000,000"),
+    body("currency")
+      .isIn(["KES", "USD", "EUR", "GBP", "NGN", "GHS", "ZAR", "UGX"])
+      .withMessage("Invalid or unsupported currency"),
+  ],
+  validateRequest,
+  asyncHandler((req, res) => paymentController.chargeCard(req, res)),
+);
+
+/**
  * @route   GET /api/v1/payments/:paymentId
  * @desc    Get payment details
  * @access  Private
@@ -718,6 +748,44 @@ router.post(
   ],
   validateRequest,
   asyncHandler(orchestrator.resetProviderCircuit.bind(orchestrator)),
+);
+
+// ── Till Payment ─────────────────────────────────────────────────────────────
+
+const payTillValidation = [
+  body("tillNumber")
+    .trim()
+    .matches(/^AFR-\d{6}$/)
+    .withMessage(
+      "Invalid till number. Expected format: AFR-XXXXXX (e.g. AFR-482931)",
+    ),
+  body("amount")
+    .isFloat({ min: 0.01, max: 1_000_000 })
+    .withMessage("Amount must be between 0.01 and 1,000,000"),
+  body("currency")
+    .isIn(["USD", "EUR", "GBP", "NGN", "GHS", "KES", "ZAR", "UGX"])
+    .withMessage("Unsupported currency"),
+  body("description")
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .escape()
+    .withMessage("Description must be 200 characters or fewer"),
+];
+
+/**
+ * @route   POST /api/v1/payments/pay-till
+ * @desc    Pay a merchant via till number
+ * @access  Private (authenticated user)
+ * @header  Idempotency-Key: <UUID v4>
+ */
+router.post(
+  "/pay-till",
+  paymentLimiter,
+  idempotency,
+  payTillValidation,
+  validateRequest,
+  asyncHandler(paymentController.payTill.bind(paymentController)),
 );
 
 module.exports = router;

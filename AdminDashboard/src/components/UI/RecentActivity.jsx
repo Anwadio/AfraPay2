@@ -7,85 +7,86 @@ import {
   ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 
+const ACTIVITY_CONFIG = {
+  USER_REGISTRATION: {
+    icon: UserPlusIcon,
+    iconClass: "bg-emerald-50 text-emerald-600",
+  },
+  LARGE_TRANSACTION: {
+    icon: BanknotesIcon,
+    iconClass: "bg-blue-50 text-blue-600",
+  },
+  KYC_APPROVED: {
+    icon: CheckBadgeIcon,
+    iconClass: "bg-teal-50 text-teal-600",
+  },
+  default: {
+    icon: ExclamationTriangleIcon,
+    iconClass: "bg-amber-50 text-amber-600",
+  },
+};
+
 const RecentActivity = ({ activities = [] }) => {
-  const getActivityIcon = (type) => {
-    switch (type) {
-      case "USER_REGISTRATION":
-        return <UserPlusIcon className="h-5 w-5 text-green-500" />;
-      case "LARGE_TRANSACTION":
-        return <BanknotesIcon className="h-5 w-5 text-blue-500" />;
-      case "KYC_APPROVED":
-        return <CheckBadgeIcon className="h-5 w-5 text-green-500" />;
-      default:
-        return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-500" />;
-    }
-  };
-
-  const getActivityColor = (type) => {
-    switch (type) {
-      case "USER_REGISTRATION":
-        return "bg-green-50 border-green-200";
-      case "LARGE_TRANSACTION":
-        return "bg-blue-50 border-blue-200";
-      case "KYC_APPROVED":
-        return "bg-green-50 border-green-200";
-      default:
-        return "bg-yellow-50 border-yellow-200";
-    }
-  };
-
   if (!activities || activities.length === 0) {
     return (
-      <div className="text-center text-gray-500 py-8">
-        <ExclamationTriangleIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-        <p>No recent activity</p>
+      <div className="flex flex-col items-center justify-center py-10 text-center">
+        <div className="h-12 w-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-3">
+          <ExclamationTriangleIcon className="h-5 w-5 text-slate-400" />
+        </div>
+        <p className="text-sm font-medium text-slate-600">No recent activity</p>
+        <p className="text-xs text-slate-400 mt-1">
+          New events will appear here
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {activities.map((activity, index) => (
-        <div
-          key={activity.id || index}
-          className={`border rounded-lg p-4 ${getActivityColor(activity.type)}`}
-        >
-          <div className="flex items-start">
-            <div className="flex-shrink-0 mr-3 mt-1">
-              {getActivityIcon(activity.type)}
+    <div className="space-y-0.5">
+      {activities.map((activity, index) => {
+        const config =
+          ACTIVITY_CONFIG[activity.type] || ACTIVITY_CONFIG.default;
+        const Icon = config.icon;
+        return (
+          <div
+            key={activity.id || index}
+            className="group flex items-start gap-3.5 p-3 rounded-xl hover:bg-slate-50 transition-colors cursor-default"
+          >
+            <div
+              className={`flex-shrink-0 h-8 w-8 rounded-lg flex items-center justify-center ${
+                config.iconClass
+              }`}
+            >
+              <Icon className="h-4 w-4" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900">
+              <p className="text-sm font-medium text-slate-800 leading-snug">
                 {activity.description}
               </p>
-              <div className="mt-1 flex items-center text-xs text-gray-500">
+              <div className="mt-1 flex items-center gap-3 text-xs text-slate-400">
                 {activity.user && (
-                  <span className="mr-4">User: {activity.user}</span>
+                  <span className="truncate max-w-[120px]">
+                    {activity.user}
+                  </span>
                 )}
                 {activity.amount && (
-                  <span className="mr-4">
-                    Amount: {activity.currency || "$"}
+                  <span className="font-semibold text-slate-600">
+                    {activity.currency || "$"}
                     {activity.amount?.toLocaleString()}
                   </span>
                 )}
-                <span>
+                <span className="ml-auto flex-shrink-0">
                   {activity.timestamp
                     ? formatDistanceToNow(new Date(activity.timestamp), {
                         addSuffix: true,
                       })
-                    : "Unknown time"}
+                    : "—"}
                 </span>
               </div>
             </div>
           </div>
-        </div>
-      ))}
-
-      {activities.length === 0 && (
-        <div className="text-center text-gray-500 py-4">
-          <p className="text-sm">No recent activity to display</p>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 };

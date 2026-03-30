@@ -101,7 +101,11 @@ api.interceptors.response.use(
           toast.error("Access forbidden");
           break;
         case 404:
-          toast.error("Resource not found");
+          // Allow individual calls to suppress this toast (e.g. /merchants/me returns
+          // 404 legitimately when a user has no application yet).
+          if (!config._suppress404) {
+            toast.error("Resource not found");
+          }
           break;
         case 429:
           toast.error("Too many requests. Please try again later.");
@@ -465,6 +469,16 @@ export const walletAPI = {
     const response = await api.post("/payments/wallet/deposit", data);
     return response;
   },
+
+  // Charge a saved card and credit the user's wallet
+  chargeCard: async (cardId, amount, currency, idempotencyKey) => {
+    const response = await api.post(
+      "/payments/charge-card",
+      { cardId, amount, currency },
+      { headers: { "Idempotency-Key": idempotencyKey } },
+    );
+    return response;
+  },
 };
 
 // Transaction API calls
@@ -681,6 +695,82 @@ export const getCurrentUser = () => {
     console.error("Error parsing user data:", error);
     return null;
   }
+};
+
+// Merchant operations
+export const merchantAPI = {
+  /**
+   * Register a new merchant application (status = pending).
+   * Body: { businessName, businessType, phoneNumber }
+   */
+  register: async (data) => {
+    const response = await api.post("/merchants/register", data);
+    return response;
+  },
+
+  /**
+   * Get the authenticated user's own merchant profile.
+   * Returns null/404 when the user has no application — toast is suppressed.
+   */
+  getMyMerchant: async () => {
+    const response = await api.get("/merchants/me", { _suppress404: true });
+    return response;
+  },
+
+  /**
+   * Get merchant sales analytics (only works when status = approved).
+   * @param {{ period?: "day"|"week"|"month"|"quarter"|"year" }} params
+   */
+  getAnalytics: async (params = {}) => {
+    const response = await api.get("/merchants/analytics", { params });
+    return response;
+  },
+};
+
+// Subscription API calls
+export const subscriptionAPI = {
+  // Get all active subscription plans
+  getPlans: async () => {
+    const response = await api.get("/subscriptions/plans");
+    return response;
+  },
+
+  // Subscribe to a plan
+  subscribe: async (data) => {
+    // data: { planId, paymentMethod: "card"|"wallet", cardId? }
+    const response = await api.post("/subscriptions/subscribe", data);
+    return response;
+  },
+
+  // Get current user's subscriptions
+  getMySubscriptions: async (params = {}) => {
+    const response = await api.get("/subscriptions", { params });
+    return response;
+  },
+
+  // Get a single subscription by ID
+  getSubscription: async (id) => {
+    const response = await api.get(`/subscriptions/${id}`);
+    return response;
+  },
+
+  // Cancel a subscription
+  cancelSubscription: async (id) => {
+    const response = await api.post(`/subscriptions/${id}/cancel`);
+    return response;
+  },
+
+  // Pause a subscription
+  pauseSubscription: async (id) => {
+    const response = await api.post(`/subscriptions/${id}/pause`);
+    return response;
+  },
+
+  // Resume a paused subscription
+  resumeSubscription: async (id) => {
+    const response = await api.post(`/subscriptions/${id}/resume`);
+    return response;
+  },
 };
 
 export default api;

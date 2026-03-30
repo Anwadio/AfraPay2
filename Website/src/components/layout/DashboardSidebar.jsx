@@ -17,10 +17,13 @@ import {
   TrendingUp,
   CreditCard,
   Send,
+  Store,
+  RefreshCw,
 } from "lucide-react";
 import { cn } from "../../utils";
 import { Badge, Avatar } from "../ui";
 import { useTranslation } from "../../utils/accessibility";
+import { useMerchant } from "../../contexts/MerchantContext";
 
 const DashboardSidebar = ({ isOpen, onClose, className, user, ...props }) => {
   const location = useLocation();
@@ -28,6 +31,25 @@ const DashboardSidebar = ({ isOpen, onClose, className, user, ...props }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(() => window.innerWidth < 1024);
   const { t } = useTranslation();
+  const { merchantStatus } = useMerchant();
+
+  // Derive merchant nav item label and badge based on application status
+  const merchantNavItem = {
+    name:
+      merchantStatus === "approved"
+        ? "Merchant Hub"
+        : merchantStatus === "pending"
+          ? "Application Pending"
+          : "Become a Merchant",
+    href: "/merchant",
+    icon: <Store className="w-5 h-5" />,
+    badge:
+      merchantStatus === "approved"
+        ? { text: "Active", variant: "success" }
+        : merchantStatus === "pending"
+          ? { text: "Review", variant: "warning" }
+          : { text: "New", variant: "primary" },
+  };
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1023px)");
@@ -75,6 +97,12 @@ const DashboardSidebar = ({ isOpen, onClose, className, user, ...props }) => {
           icon: <Send className="w-5 h-5" />,
           badge: null,
         },
+        {
+          name: "Subscriptions",
+          href: "/subscriptions",
+          icon: <RefreshCw className="w-5 h-5" />,
+          badge: null,
+        },
       ],
     },
     {
@@ -93,6 +121,10 @@ const DashboardSidebar = ({ isOpen, onClose, className, user, ...props }) => {
           badge: null,
         },
       ],
+    },
+    {
+      section: "Business",
+      items: [merchantNavItem],
     },
     {
       section: t("navigation.accountSection"),

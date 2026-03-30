@@ -1009,6 +1009,38 @@ class ProfileController {
     flatten(data);
     return csv;
   }
+
+  /**
+   * PATCH /api/v1/profile/push-token
+   * Stores or removes the Expo push token for the authenticated user.
+   * Body: { expoPushToken: string | null }
+   */
+  async updatePushToken(req, res) {
+    try {
+      const { user } = req;
+      const { expoPushToken } = req.body;
+
+      const currentUser = await getUsers().get(user.id);
+      const prefs = currentUser.prefs || {};
+
+      if (expoPushToken) {
+        prefs.expoPushToken = expoPushToken;
+      } else {
+        delete prefs.expoPushToken;
+      }
+
+      await getUsers().updatePrefs(user.id, prefs);
+
+      logger.info("Push token updated", { userId: user.id });
+      res.success(null, "Push token updated");
+    } catch (error) {
+      logger.error("Update push token failed", {
+        userId: req.user?.id,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
 }
 
 module.exports = new ProfileController();

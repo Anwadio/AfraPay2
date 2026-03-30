@@ -1,7 +1,12 @@
 import React, { useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
+import {
+  EyeIcon,
+  EyeSlashIcon,
+  ShieldCheckIcon,
+  LockClosedIcon,
+} from "@heroicons/react/24/outline";
 import toast from "react-hot-toast";
 
 const LoginPage = () => {
@@ -48,23 +53,92 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="mx-auto h-16 w-16 bg-blue-600 rounded-lg flex items-center justify-center">
-            <span className="text-white font-bold text-2xl">A</span>
+    <div className="min-h-screen flex">
+      {/* ── Left: Branded panel (desktop only) ── */}
+      <div
+        className="hidden lg:flex lg:w-[45%] flex-col justify-between p-12 relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(150deg, #0f172a 0%, #1e3a8a 55%, #0d9488 100%)",
+        }}
+      >
+        {/* Decorative orbs */}
+        <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-white/[0.04]" />
+        <div className="absolute bottom-0 -left-20 h-72 w-72 rounded-full bg-white/[0.04]" />
+
+        {/* Logo */}
+        <div className="relative flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-white/[0.12] backdrop-blur-sm flex items-center justify-center">
+            <span className="text-white font-extrabold text-lg">A</span>
           </div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            AfraPay Admin
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Sign in to your admin dashboard
-          </p>
+          <div>
+            <h1 className="text-white font-bold text-[17px] leading-none">
+              AfraPay
+            </h1>
+            <p className="text-white/40 text-[10px] uppercase tracking-[0.18em] mt-0.5">
+              Admin Console
+            </p>
+          </div>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          <div className="rounded-md shadow-sm -space-y-px">
+
+        {/* Tagline */}
+        <div className="relative space-y-6">
+          <div>
+            <h2 className="text-white text-3xl font-bold leading-tight">
+              Manage your fintech
+              <br />
+              platform with confidence.
+            </h2>
+            <p className="mt-3 text-white/55 text-sm leading-relaxed max-w-xs">
+              Real-time control over users, transactions, compliance, and fraud
+              detection — all in one place.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            {[
+              { icon: ShieldCheckIcon, label: "Role-based access control" },
+              { icon: LockClosedIcon, label: "AES-256 encrypted sessions" },
+            ].map(({ icon: Icon, label }) => (
+              <div key={label} className="flex items-center gap-3">
+                <div className="h-7 w-7 rounded-lg bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Icon className="h-3.5 w-3.5 text-white/60" />
+                </div>
+                <span className="text-sm text-white/60">{label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <p className="relative text-white/25 text-xs">
+          © {new Date().getFullYear()} AfraPay. All rights reserved.
+        </p>
+      </div>
+
+      {/* ── Right: Login form ── */}
+      <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 bg-slate-50">
+        <div className="w-full max-w-sm animate-fade-in">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex flex-col items-center mb-10">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center shadow-feature mb-3">
+              <span className="text-white font-extrabold text-xl">A</span>
+            </div>
+            <h1 className="text-xl font-bold text-slate-900">AfraPay Admin</h1>
+          </div>
+
+          <div className="mb-8">
+            <h2 className="text-2xl font-bold text-slate-900 tracking-tight">
+              Sign in
+            </h2>
+            <p className="mt-1.5 text-sm text-slate-500">
+              Enter your admin credentials to continue
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Email */}
             <div>
-              <label htmlFor="email" className="sr-only">
+              <label htmlFor="email" className="label">
                 Email address
               </label>
               <input
@@ -73,64 +147,70 @@ const LoginPage = () => {
                 type="email"
                 autoComplete="email"
                 required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Email address"
+                placeholder="admin@afrapay.com"
                 value={formData.email}
                 onChange={handleChange}
+                className="input"
               />
             </div>
-            <div className="relative">
-              <label htmlFor="password" className="sr-only">
+
+            {/* Password */}
+            <div>
+              <label htmlFor="password" className="label">
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm"
-                placeholder="Password"
-                value={formData.password}
-                onChange={handleChange}
-              />
-              <button
-                type="button"
-                className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? (
-                  <EyeSlashIcon className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <EyeIcon className="h-5 w-5 text-gray-400" />
-                )}
-              </button>
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="input pr-11"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center px-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? (
+                    <EyeSlashIcon
+                      style={{ height: "1.0625rem", width: "1.0625rem" }}
+                    />
+                  ) : (
+                    <EyeIcon
+                      style={{ height: "1.0625rem", width: "1.0625rem" }}
+                    />
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div>
             <button
               type="submit"
               disabled={isLoading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary w-full justify-center mt-2"
             >
               {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Signing in...
-                </div>
+                <>
+                  <span className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Signing in…
+                </>
               ) : (
-                "Sign in"
+                "Sign in to Admin"
               )}
             </button>
-          </div>
+          </form>
 
-          <div className="text-center">
-            <p className="text-xs text-gray-500">
-              Admin access required. Contact support if you need assistance.
-            </p>
-          </div>
-        </form>
+          <p className="mt-8 text-center text-xs text-slate-400">
+            Admin access only. Contact your system administrator if you need
+            access.
+          </p>
+        </div>
       </div>
     </div>
   );

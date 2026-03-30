@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CreditCard,
@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   Loader2,
   Star,
+  Wallet,
+  X,
 } from "lucide-react";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import {
@@ -31,6 +33,7 @@ import {
 import { useAuth } from "../contexts/AuthContext";
 import { cn } from "../utils";
 import { cardAPI } from "../services/cardAPI";
+import { walletAPI } from "../services/api";
 
 /* ── Constants ─────────────────────────────────────────────────────────── */
 const CARD_COLORS = [
@@ -44,6 +47,27 @@ const CARD_COLORS = [
 
 const CURRENT_YEAR = new Date().getFullYear();
 const EXPIRY_YEARS = Array.from({ length: 12 }, (_, i) => CURRENT_YEAR + i);
+
+/* ── UUID helper (no external dependency) ─────────────────────────────── */
+function uuidv4() {
+  return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+    (
+      c ^
+      (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+    ).toString(16),
+  );
+}
+
+const FUND_CURRENCIES = [
+  "KES",
+  "USD",
+  "EUR",
+  "GBP",
+  "NGN",
+  "GHS",
+  "ZAR",
+  "UGX",
+];
 
 const EMPTY_FORM = {
   cardNumber: "",
@@ -104,6 +128,7 @@ const CreditCardDisplay = ({
   onToggleFreeze,
   onDelete,
   onSetDefault,
+  onFundWallet,
 }) => {
   const frozen = card.status === "frozen";
 
@@ -161,9 +186,7 @@ const CreditCardDisplay = ({
 
         {/* Card number */}
         <p className="text-xl font-mono tracking-[0.2em] mb-5">
-          {isRevealed
-            ? `•••• •••• •••• ${card.last4}`
-            : `•••• •••• •••• ${card.last4}`}
+          •••• •••• •••• {card.last4}
         </p>
 
         {/* Bottom row */}
@@ -207,6 +230,58 @@ const CreditCardDisplay = ({
           </div>
         )}
       </div>
+
+      {/* Expanded details panel */}
+      {isRevealed && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.2 }}
+          className="rounded-xl border border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800/50 p-4 grid grid-cols-2 gap-3 text-sm"
+        >
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-400 mb-0.5">
+              Card Number
+            </p>
+            <p className="font-mono font-semibold text-neutral-800 dark:text-neutral-100">
+              •••• •••• •••• {card.last4}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-400 mb-0.5">
+              Expiry
+            </p>
+            <p className="font-semibold text-neutral-800 dark:text-neutral-100">
+              {card.expiry}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-400 mb-0.5">
+              Card Holder
+            </p>
+            <p className="font-semibold text-neutral-800 dark:text-neutral-100 truncate">
+              {card.holder}
+            </p>
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-400 mb-0.5">
+              Network / Type
+            </p>
+            <p className="font-semibold text-neutral-800 dark:text-neutral-100">
+              {card.network} · {card.type}
+            </p>
+          </div>
+          <div className="col-span-2">
+            <p className="text-[10px] font-medium uppercase tracking-wider text-neutral-400 mb-0.5">
+              Card ID
+            </p>
+            <p className="font-mono text-xs text-neutral-500 dark:text-neutral-400 break-all">
+              {card.id}
+            </p>
+          </div>
+        </motion.div>
+      )}
 
       {/* Card actions */}
       <div className="flex gap-2 flex-wrap">
@@ -260,12 +335,250 @@ const CreditCardDisplay = ({
         <Button
           variant="outline"
           size="sm"
+          onClick={() => onFundWallet(card)}
+          disabled={frozen}
+          title={frozen ? "Unfreeze card first" : "Fund wallet from this card"}
+          className="flex items-center gap-1.5 text-emerald-600 border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Wallet className="w-4 h-4" />
+          <span className="hidden sm:inline">Fund Wallet</span>
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
           onClick={() => onDelete(card.id)}
           className="flex items-center gap-1.5 text-red-500 border-red-200 hover:bg-red-50 dark:hover:bg-red-900/20"
         >
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
+    </motion.div>
+  );
+};
+
+/* ── FundWalletModal ───────────────────────────────────────────────────── */
+const FundWalletModal = ({
+  cards,
+  selectedCard,
+  onClose,
+  idempotencyKeyRef,
+}) => {
+  const [cardId, setCardId] = useState(selectedCard?.id || "");
+  const [amount, setAmount] = useState("");
+  const [currency, setCurrency] = useState("KES");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  const activeCards = cards.filter((c) => c.status === "active");
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError(null);
+    const parsedAmount = parseFloat(amount);
+    if (!cardId) return setError("Please select a card.");
+    if (!parsedAmount || parsedAmount < 1)
+      return setError("Minimum amount is 1.");
+    if (parsedAmount > 1_000_000)
+      return setError("Maximum amount is 1,000,000.");
+
+    setLoading(true);
+    try {
+      const res = await walletAPI.chargeCard(
+        cardId,
+        parsedAmount,
+        currency,
+        idempotencyKeyRef.current,
+      );
+      const data = res?.data?.data || res?.data || res;
+      setSuccess({
+        amount: data.amount ?? parsedAmount,
+        currency: data.currency ?? currency,
+        transactionId: data.transactionId,
+      });
+      // Rotate idempotency key so the next charge is a fresh request
+      idempotencyKeyRef.current = uuidv4();
+    } catch (err) {
+      setError(
+        err?.response?.data?.message ||
+          err?.message ||
+          "Charge failed. Please try again.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+      onClick={() => !loading && onClose()}
+    >
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 300, damping: 25 }}
+        className="bg-white dark:bg-neutral-900 rounded-2xl shadow-2xl p-8 max-w-md w-full"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-emerald-50 dark:bg-emerald-900/30">
+              <Wallet className="w-5 h-5 text-emerald-600" />
+            </div>
+            <h2 className="text-xl font-bold text-neutral-900 dark:text-white">
+              Fund Wallet
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="p-1.5 rounded-lg text-neutral-400 hover:text-neutral-600 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-40"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {success ? (
+          /* ── Success state ── */
+          <div className="flex flex-col items-center gap-4 py-4 text-center">
+            <div className="w-16 h-16 rounded-full bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+              <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+            </div>
+            <div>
+              <p className="text-lg font-semibold text-neutral-900 dark:text-white mb-1">
+                Wallet Funded!
+              </p>
+              <p className="text-sm text-neutral-500">
+                {success.currency}{" "}
+                {parseFloat(success.amount).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}{" "}
+                has been added to your wallet.
+              </p>
+              {success.transactionId && (
+                <p className="text-xs text-neutral-400 mt-1">
+                  Ref: {success.transactionId}
+                </p>
+              )}
+            </div>
+            <Button variant="primary" className="w-full mt-2" onClick={onClose}>
+              Done
+            </Button>
+          </div>
+        ) : (
+          /* ── Form ── */
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Card selector */}
+            <div>
+              <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
+                Charge Card
+              </label>
+              {activeCards.length === 0 ? (
+                <p className="text-sm text-amber-600 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3">
+                  No active cards available. Unfreeze a card first.
+                </p>
+              ) : (
+                <select
+                  value={cardId}
+                  onChange={(e) => setCardId(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <option value="">Select a card…</option>
+                  {activeCards.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.label} — **** {c.last4} ({c.network})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            {/* Amount + Currency */}
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
+                  Amount
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="1000000"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  required
+                  className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+              <div className="w-28">
+                <label className="block text-xs font-medium text-neutral-600 dark:text-neutral-400 mb-1">
+                  Currency
+                </label>
+                <select
+                  value={currency}
+                  onChange={(e) => setCurrency(e.target.value)}
+                  className="w-full rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  {FUND_CURRENCIES.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {error}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-1">
+              <Button
+                type="button"
+                variant="outline"
+                className="flex-1"
+                onClick={onClose}
+                disabled={loading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 hover:bg-emerald-700"
+                disabled={loading || activeCards.length === 0}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Charging…
+                  </>
+                ) : (
+                  <>
+                    <Wallet className="w-4 h-4" />
+                    Fund Wallet
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        )}
+      </motion.div>
     </motion.div>
   );
 };
@@ -281,6 +594,9 @@ const Cards = () => {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState(null);
+  const [showFundModal, setShowFundModal] = useState(false);
+  const [fundCard, setFundCard] = useState(null);
+  const idempotencyKey = useRef(uuidv4());
 
   const dashboardUser = {
     name: user?.name || user?.email || "User",
@@ -293,7 +609,10 @@ const Cards = () => {
     const fetchCards = async () => {
       try {
         const data = await cardAPI.getCards();
-        setCards((data.cards || []).map(mapApiCard));
+        const cardList = Array.isArray(data)
+          ? data
+          : data.data || data.cards || [];
+        setCards(cardList.filter(Boolean).map(mapApiCard));
       } catch (err) {
         setError("Failed to load cards. Please try again.");
         console.error("Failed to fetch cards:", err);
@@ -372,7 +691,8 @@ const Cards = () => {
         cardType: formData.cardType,
         color: formData.color,
       });
-      setCards((prev) => [...prev, mapApiCard(data.card)]);
+      const newCard = data.data || data.card || (data.id ? data : null);
+      if (newCard) setCards((prev) => [...prev, mapApiCard(newCard)]);
       setShowAddModal(false);
       setFormData(EMPTY_FORM);
     } catch (err) {
@@ -382,6 +702,16 @@ const Cards = () => {
     } finally {
       setAdding(false);
     }
+  };
+
+  const openFundModal = (card) => {
+    setFundCard(card);
+    setShowFundModal(true);
+  };
+
+  const closeFundModal = () => {
+    setShowFundModal(false);
+    setFundCard(null);
   };
 
   const activeCards = cards.filter((c) => c.status === "active").length;
@@ -496,6 +826,7 @@ const Cards = () => {
                       onToggleFreeze={toggleFreeze}
                       onDelete={deleteCard}
                       onSetDefault={setDefaultCard}
+                      onFundWallet={openFundModal}
                     />
                   ))}
                 </AnimatePresence>
@@ -757,6 +1088,18 @@ const Cards = () => {
                 </form>
               </motion.div>
             </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Fund Wallet Modal */}
+        <AnimatePresence>
+          {showFundModal && (
+            <FundWalletModal
+              cards={cards}
+              selectedCard={fundCard}
+              onClose={closeFundModal}
+              idempotencyKeyRef={idempotencyKey}
+            />
           )}
         </AnimatePresence>
       </PageContainer>

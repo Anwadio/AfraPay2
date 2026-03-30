@@ -21,176 +21,207 @@ ChartJS.register(
   ArcElement,
 );
 
+// Apply premium font to all charts
+ChartJS.defaults.font.family = "'Inter', system-ui, sans-serif";
+ChartJS.defaults.color = "#94a3b8";
+
+const BAR_COLORS = [
+  "rgba(37,99,235,0.85)",
+  "rgba(20,184,166,0.85)",
+  "rgba(124,58,237,0.85)",
+  "rgba(245,158,11,0.85)",
+  "rgba(239,68,68,0.80)",
+];
+const DONUT_COLORS = ["#2563EB", "#14B8A6", "#7C3AED", "#F59E0B", "#EF4444"];
+
+const TOOLTIP_STYLE = {
+  backgroundColor: "#0f172a",
+  titleColor: "#f8fafc",
+  bodyColor: "#94a3b8",
+  padding: 12,
+  cornerRadius: 10,
+  borderColor: "rgba(255,255,255,0.08)",
+  borderWidth: 1,
+};
+
+function ChartCard({ title, subtitle, children }) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-card p-5">
+      <div className="mb-5">
+        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        {subtitle && (
+          <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+        )}
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function MetricGrid({ items }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {items.map(({ label, value, color }) => (
+        <div key={label} className="text-center p-3 rounded-xl bg-slate-50">
+          <p className={`text-xl font-bold tabular ${color}`}>{value}</p>
+          <p className="text-xs text-slate-500 mt-1">{label}</p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 const DashboardCharts = ({ data }) => {
   if (!data) return null;
 
   const { users, transactions } = data;
 
-  // User Analytics Chart Data
-  const userChartData = {
+  const barData = {
     labels: Object.keys(users?.usersByCountry || {}),
     datasets: [
       {
-        label: "Users by Country",
+        label: "Users",
         data: Object.values(users?.usersByCountry || {}),
-        backgroundColor: [
-          "rgba(59, 130, 246, 0.8)",
-          "rgba(16, 185, 129, 0.8)",
-          "rgba(245, 158, 11, 0.8)",
-          "rgba(239, 68, 68, 0.8)",
-          "rgba(139, 92, 246, 0.8)",
-        ],
-        borderColor: [
-          "rgba(59, 130, 246, 1)",
-          "rgba(16, 185, 129, 1)",
-          "rgba(245, 158, 11, 1)",
-          "rgba(239, 68, 68, 1)",
-          "rgba(139, 92, 246, 1)",
-        ],
-        borderWidth: 1,
+        backgroundColor: BAR_COLORS,
+        borderColor: "transparent",
+        borderRadius: 8,
+        borderSkipped: false,
       },
     ],
   };
 
-  // Transaction Types Chart Data
-  const transactionChartData = {
+  const donutData = {
     labels: Object.keys(transactions?.transactionsByType || {}),
     datasets: [
       {
-        label: "Transactions by Type",
         data: Object.values(transactions?.transactionsByType || {}),
-        backgroundColor: [
-          "rgba(99, 102, 241, 0.8)",
-          "rgba(34, 197, 94, 0.8)",
-          "rgba(251, 191, 36, 0.8)",
-          "rgba(248, 113, 113, 0.8)",
-        ],
-        borderColor: [
-          "rgba(99, 102, 241, 1)",
-          "rgba(34, 197, 94, 1)",
-          "rgba(251, 191, 36, 1)",
-          "rgba(248, 113, 113, 1)",
-        ],
-        borderWidth: 1,
+        backgroundColor: DONUT_COLORS,
+        borderWidth: 0,
+        hoverOffset: 6,
       },
     ],
   };
 
-  const chartOptions = {
+  const barOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
-      legend: {
-        position: "top",
+      legend: { display: false },
+      tooltip: TOOLTIP_STYLE,
+    },
+    scales: {
+      x: {
+        grid: { display: false },
+        border: { display: false },
+        ticks: { font: { size: 11 } },
       },
-      title: {
-        display: true,
-        text: "User Distribution",
+      y: {
+        grid: { color: "#f1f5f9", drawBorder: false },
+        border: { display: false, dash: [4, 4] },
+        ticks: { font: { size: 11 } },
       },
     },
   };
 
-  const doughnutOptions = {
+  const donutOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: "right",
+        labels: {
+          padding: 14,
+          usePointStyle: true,
+          pointStyleWidth: 8,
+          font: { size: 12 },
+          color: "#475569",
+        },
       },
-      title: {
-        display: true,
-        text: "Transaction Types",
-      },
+      tooltip: TOOLTIP_STYLE,
     },
+    cutout: "72%",
   };
 
+  const hasCountryData =
+    users?.usersByCountry && Object.keys(users.usersByCountry).length > 0;
+  const hasTypeData =
+    transactions?.transactionsByType &&
+    Object.keys(transactions.transactionsByType).length > 0;
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* User Analytics Chart */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Users by Country
-        </h3>
-        <div className="h-64">
-          {users?.usersByCountry &&
-          Object.keys(users.usersByCountry).length > 0 ? (
-            <Bar data={userChartData} options={chartOptions} />
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <ChartCard title="Users by Country" subtitle="Geographic distribution">
+        <div className="h-52">
+          {hasCountryData ? (
+            <Bar data={barData} options={barOptions} />
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              <p>No user data available</p>
+            <div className="flex h-full items-center justify-center text-sm text-slate-400">
+              No data available
             </div>
           )}
         </div>
-      </div>
+      </ChartCard>
 
-      {/* Transaction Types Chart */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Transaction Types
-        </h3>
-        <div className="h-64">
-          {transactions?.transactionsByType &&
-          Object.keys(transactions.transactionsByType).length > 0 ? (
-            <Doughnut data={transactionChartData} options={doughnutOptions} />
+      <ChartCard title="Transaction Types" subtitle="Breakdown by category">
+        <div className="h-52">
+          {hasTypeData ? (
+            <Doughnut data={donutData} options={donutOptions} />
           ) : (
-            <div className="flex items-center justify-center h-full text-gray-500">
-              <p>No transaction data available</p>
+            <div className="flex h-full items-center justify-center text-sm text-slate-400">
+              No data available
             </div>
           )}
         </div>
-      </div>
+      </ChartCard>
 
-      {/* KYC Levels Chart */}
       {users?.usersByKYCLevel &&
         Object.keys(users.usersByKYCLevel).length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 lg:col-span-2">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Users by KYC Level
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {Object.entries(users.usersByKYCLevel).map(([level, count]) => (
-                <div key={level} className="text-center">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {count}
-                  </div>
-                  <div className="text-sm text-gray-500">{level}</div>
-                </div>
-              ))}
-            </div>
-          </div>
+          <ChartCard
+            title="KYC Verification Levels"
+            subtitle="Users by verification tier"
+          >
+            <MetricGrid
+              items={Object.entries(users.usersByKYCLevel).map(
+                ([level, count]) => ({
+                  label: level,
+                  value: count.toLocaleString(),
+                  color: "text-slate-900",
+                }),
+              )}
+            />
+          </ChartCard>
         )}
 
-      {/* Revenue Summary */}
       {data.revenue && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 lg:col-span-2">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Revenue Summary
-          </h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">
-                ${data.revenue.totalRevenue?.toLocaleString() || "0"}
-              </div>
-              <div className="text-sm text-gray-500">Total Revenue</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                ${data.revenue.monthlyRevenue?.toLocaleString() || "0"}
-              </div>
-              <div className="text-sm text-gray-500">Monthly Revenue</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {data.revenue.transactionCount?.toLocaleString() || "0"}
-              </div>
-              <div className="text-sm text-gray-500">Total Transactions</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-orange-600">
-                ${data.revenue.averageTransaction?.toFixed(2) || "0"}
-              </div>
-              <div className="text-sm text-gray-500">Avg. Transaction</div>
-            </div>
-          </div>
-        </div>
+        <ChartCard
+          title="Revenue Summary"
+          subtitle="Platform financial overview"
+        >
+          <MetricGrid
+            items={[
+              {
+                label: "Total Revenue",
+                value: `$${data.revenue.totalRevenue?.toLocaleString() || 0}`,
+                color: "text-emerald-600",
+              },
+              {
+                label: "Monthly Revenue",
+                value: `$${data.revenue.monthlyRevenue?.toLocaleString() || 0}`,
+                color: "text-blue-600",
+              },
+              {
+                label: "Transactions",
+                value: data.revenue.transactionCount?.toLocaleString() || 0,
+                color: "text-violet-600",
+              },
+              {
+                label: "Avg. Transaction",
+                value: `$${data.revenue.averageTransaction?.toFixed(2) || 0}`,
+                color: "text-amber-600",
+              },
+            ]}
+          />
+        </ChartCard>
       )}
     </div>
   );

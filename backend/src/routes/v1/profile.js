@@ -439,4 +439,32 @@ router.get(
   asyncHandler(profileController.exportData),
 );
 
+// Push notification token
+
+/**
+ * @route   PATCH /api/v1/profile/push-token
+ * @desc    Register or remove Expo push token for this device
+ * @access  Private
+ * @body    { expoPushToken: string | null }
+ */
+router.patch(
+  "/push-token",
+  body("expoPushToken")
+    .optional({ nullable: true })
+    .custom((val) => {
+      if (val !== null && val !== undefined && val !== "") {
+        if (typeof val !== "string" || val.length > 200)
+          throw new Error("Invalid push token");
+        if (
+          !val.startsWith("ExponentPushToken") &&
+          !val.startsWith("ExpoPushToken")
+        )
+          throw new Error("Token must be a valid Expo push token");
+      }
+      return true;
+    }),
+  validateRequest,
+  asyncHandler((req, res) => profileController.updatePushToken(req, res)),
+);
+
 module.exports = router;

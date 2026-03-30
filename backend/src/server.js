@@ -216,6 +216,10 @@ class AfrPayServer {
     const ChatWebSocketHandler = require("./services/chatWebSocket");
     this.chatHandler = new ChatWebSocketHandler(this.io);
 
+    // Start recurring billing scheduler
+    const billingScheduler = require("./jobs/billingScheduler");
+    billingScheduler.start();
+
     this.io.on("connection", (socket) => {
       logger.info("WebSocket client connected", {
         socketId: socket.id,
@@ -306,6 +310,14 @@ class AfrPayServer {
         // Close WebSocket connections
         if (this.io) {
           this.io.close();
+        }
+
+        // Stop billing scheduler before disconnecting
+        try {
+          const billingScheduler = require("./jobs/billingScheduler");
+          billingScheduler.stop();
+        } catch (_) {
+          /* ignore if not loaded */
         }
 
         // Disconnect from databases

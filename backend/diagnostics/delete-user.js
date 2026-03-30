@@ -3,7 +3,8 @@
  * Usage: node diagnostics/delete-user.js <email>
  * Example: node diagnostics/delete-user.js anthonywai5522@gmail.com
  */
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 const { Client, Databases, Users, Query } = require("node-appwrite");
 
 const client = new Client()

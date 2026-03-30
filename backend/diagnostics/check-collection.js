@@ -2,7 +2,8 @@
  * Diagnostic: Check collection attributes and attempt a test document creation
  * Run: node diagnostics/check-collection.js
  */
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 const { Client, Databases, ID } = require("node-appwrite");
 const crypto = require("crypto");
 

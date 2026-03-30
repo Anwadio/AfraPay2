@@ -6,8 +6,11 @@
 const { Client, Users, Databases, ID, Query } = require("node-appwrite");
 const config = require("../config/environment");
 const logger = require("../utils/logger");
+const auditService = require("../services/auditService");
+const fraudService = require("../services/fraudService");
 const { getDatabaseHealth } = require("../database/connection");
 const { NotFoundError } = require("../middleware/monitoring/errorHandler");
+const emailService = require("../services/emailService");
 
 // Initialize Appwrite clients
 const client = new Client()
@@ -363,6 +366,20 @@ class AdminController {
         reason,
         ip: req.ip,
       });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "USER_STATUS_UPDATED",
+        entity: "user",
+        entityId: userId,
+        metadata: {
+          oldStatus: user.labels?.accountStatus,
+          newStatus: status,
+          reason,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
 
       res.success(
         {
@@ -426,6 +443,22 @@ class AdminController {
         verificationLevel,
         notes,
         ip: req.ip,
+      });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "USER_VERIFICATION_UPDATED",
+        entity: "user",
+        entityId: userId,
+        metadata: {
+          oldKYCLevel: currentKYCLevel,
+          newKYCLevel: updateLabels.kycLevel || currentKYCLevel,
+          verified,
+          verificationLevel,
+          notes,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
       });
 
       res.success(
@@ -551,6 +584,16 @@ class AdminController {
         endDate,
         recordCount: userData.length,
         ip: req.ip,
+      });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "USER_REPORT_GENERATED",
+        entity: "user",
+        entityId: "report",
+        metadata: { format, startDate, endDate, recordCount: userData.length },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
       });
 
       res.send(reportData);
@@ -966,7 +1009,7 @@ class AdminController {
    */
 
   /**
-   * Get all transactions with filters
+   * Get all transactions with filters, sort, and pagination (SDK v12)
    */
   async getTransactions(req, res) {
     try {
@@ -974,49 +1017,79 @@ class AdminController {
         page = 1,
         limit = 50,
         status,
+        type,
         provider,
+        flagged,
         startDate,
         endDate,
         search,
       } = req.query;
 
-      const queries = [];
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const pageLimit = Math.min(100, Math.max(1, parseInt(limit) || 50));
+
+      // Build Appwrite v12 query array — limit/offset go inside queries
+      const queries = [
+        Query.orderDesc("$createdAt"),
+        Query.limit(pageLimit),
+        Query.offset((pageNum - 1) * pageLimit),
+      ];
+
       if (status) queries.push(Query.equal("status", status));
+      if (type) queries.push(Query.equal("type", type));
       if (provider) queries.push(Query.equal("provider", provider));
+      if (flagged !== undefined)
+        queries.push(Query.equal("flagged", flagged === "true"));
       if (startDate)
         queries.push(Query.greaterThanEqual("$createdAt", startDate));
       if (endDate) queries.push(Query.lessThanEqual("$createdAt", endDate));
+      // Search by transaction $id (exact match)
+      if (search && search.trim().length >= 8) {
+        queries.push(Query.equal("$id", search.trim()));
+      }
 
       const transactionList = await this.databases.listDocuments(
         config.database.appwrite.databaseId,
         config.collections.transactionsId,
         queries,
-        parseInt(limit),
-        (parseInt(page) - 1) * parseInt(limit),
       );
 
-      const transactions = transactionList.documents.map((transaction) => ({
-        id: transaction.$id,
-        userId: transaction.userId,
-        amount: transaction.amount,
-        currency: transaction.currency,
-        status: transaction.status,
-        provider: transaction.provider,
-        type: transaction.type,
-        description: transaction.description,
-        createdAt: transaction.$createdAt,
-        user: transaction.user, // Populated from relationship
+      const transactions = transactionList.documents.map((tx) => ({
+        id: tx.$id,
+        // Sender — varies per transaction type
+        senderId: tx.senderId || tx.userId || "",
+        senderEmail: tx.senderEmail || "",
+        // Recipient / receiver
+        recipientId: tx.recipientId || "",
+        recipientEmail: tx.recipientEmail || "",
+        recipientPhone: tx.recipientPhone || tx.receiverPhone || "",
+        recipientName: tx.recipientName || tx.receiverAccountName || "",
+        // Core financial data
+        amount: tx.amount,
+        currency: tx.currency || "USD",
+        status: tx.status,
+        type: tx.type,
+        provider: tx.provider || tx.receiverProvider || "",
+        description: tx.description || "",
+        // Reference data
+        providerReference: tx.providerReference || "",
+        idempotencyKey: tx.idempotencyKey || "",
+        paymentMethod: tx.paymentMethod || "",
+        flagged: tx.flagged || false,
+        // Security / audit
+        ipAddress: tx.ipAddress || "",
+        // Timestamps
+        createdAt: tx.$createdAt,
+        updatedAt: tx.$updatedAt,
       }));
-
-      const totalPages = Math.ceil(transactionList.total / parseInt(limit));
 
       res.paginated(
         transactions,
         {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: pageNum,
+          limit: pageLimit,
           totalItems: transactionList.total,
-          totalPages,
+          totalPages: Math.ceil(transactionList.total / pageLimit),
         },
         "Transactions retrieved successfully",
       );
@@ -1095,6 +1168,16 @@ class AdminController {
         newStatus: status,
         reason,
         ip: req.ip,
+      });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "TRANSACTION_STATUS_UPDATED",
+        entity: "transaction",
+        entityId: transactionId,
+        metadata: { oldStatus: transaction.status, newStatus: status, reason },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
       });
 
       res.success(
@@ -1273,6 +1356,16 @@ class AdminController {
         newStatus: status,
         reason,
         ip: req.ip,
+      });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "MERCHANT_STATUS_UPDATED",
+        entity: "merchant",
+        entityId: merchantId,
+        metadata: { oldStatus: merchant.status, newStatus: status, reason },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
       });
 
       res.success(
@@ -1454,6 +1547,21 @@ class AdminController {
         reason,
         ip: req.ip,
       });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "CARD_STATUS_UPDATED",
+        entity: "card",
+        entityId: cardId,
+        metadata: {
+          userId: card.userId,
+          oldStatus: card.status,
+          newStatus: status,
+          reason,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
 
       res.success(
         {
@@ -1570,6 +1678,16 @@ class AdminController {
         status,
         ip: req.ip,
       });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "EDUCATION_CONTENT_CREATED",
+        entity: "content",
+        entityId: newContent.$id,
+        metadata: { title, categoryId, status },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
 
       res.success(newContent, "Education content created successfully");
     } catch (error) {
@@ -1610,6 +1728,16 @@ class AdminController {
         status,
         ip: req.ip,
       });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "EDUCATION_CONTENT_UPDATED",
+        entity: "content",
+        entityId: contentId,
+        metadata: { title, categoryId, status },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
 
       res.success(updatedContent, "Education content updated successfully");
     } catch (error) {
@@ -1638,6 +1766,16 @@ class AdminController {
       logger.audit("EDUCATION_CONTENT_DELETED", req.user.id, {
         contentId,
         ip: req.ip,
+      });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "EDUCATION_CONTENT_DELETED",
+        entity: "content",
+        entityId: contentId,
+        metadata: {},
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
       });
 
       res.success({ contentId }, "Education content deleted successfully");
@@ -1708,6 +1846,16 @@ class AdminController {
         name,
         ip: req.ip,
       });
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "EDUCATION_CATEGORY_CREATED",
+        entity: "content",
+        entityId: newCategory.$id,
+        metadata: { name },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
 
       res.success(newCategory, "Education category created successfully");
     } catch (error) {
@@ -1762,68 +1910,116 @@ class AdminController {
   async getNotifications(req, res) {
     try {
       const { page = 1, limit = 20, read } = req.query;
+      const pageNum = Math.max(1, parseInt(page));
+      const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
+      const offset = (pageNum - 1) * limitNum;
 
-      const queries = [];
-      if (read !== undefined) queries.push(`read=${read}`);
+      const notifCollectionId =
+        config.database.appwrite.notificationsCollectionId;
+      if (!notifCollectionId) {
+        return res.paginated(
+          [],
+          {
+            page: pageNum,
+            limit: limitNum,
+            totalItems: 0,
+            totalPages: 0,
+            unreadCount: 0,
+          },
+          "Notifications retrieved successfully",
+        );
+      }
 
-      // TODO: Replace with actual notifications collection
-      const notifications = [
-        {
-          id: "1",
-          title: "High Transaction Volume Alert",
-          message: "Transaction volume exceeded 150% of daily average",
-          type: "warning",
-          read: false,
-          createdAt: new Date().toISOString(),
-        },
-        {
-          id: "2",
-          title: "New Merchant Application",
-          message: "TechCorp Ltd. has submitted a new merchant application",
-          type: "info",
-          read: false,
-          createdAt: new Date(Date.now() - 300000).toISOString(),
-        },
-        {
-          id: "3",
-          title: "System Maintenance Complete",
-          message: "Scheduled maintenance completed successfully",
-          type: "success",
-          read: true,
-          createdAt: new Date(Date.now() - 3600000).toISOString(),
-        },
+      // Query by userId: "__admin__" — this sentinel is written on every admin
+      // notification and uses the existing indexed userId field. This avoids any
+      // dependency on the optional targetRole attribute which requires a migration.
+      const baseFilter = Query.equal("userId", "__admin__");
+
+      const queries = [
+        baseFilter,
+        Query.orderDesc("$createdAt"),
+        Query.limit(limitNum),
+        Query.offset(offset),
       ];
 
-      const filteredNotifications =
-        read !== undefined
-          ? notifications.filter((n) => n.read === (read === "true"))
-          : notifications;
+      if (read !== undefined) {
+        queries.push(Query.equal("read", read === "true"));
+      }
 
-      const totalPages = Math.ceil(
-        filteredNotifications.length / parseInt(limit),
-      );
-      const startIndex = (parseInt(page) - 1) * parseInt(limit);
-      const paginatedNotifications = filteredNotifications.slice(
-        startIndex,
-        startIndex + parseInt(limit),
-      );
-
-      const unreadCount = notifications.filter((n) => !n.read).length;
+      const [result, unreadResult] = await Promise.all([
+        this.databases.listDocuments(
+          config.database.appwrite.databaseId,
+          notifCollectionId,
+          queries,
+        ),
+        this.databases.listDocuments(
+          config.database.appwrite.databaseId,
+          notifCollectionId,
+          [
+            Query.equal("userId", "__admin__"),
+            Query.equal("read", false),
+            Query.limit(1),
+          ],
+        ),
+      ]);
 
       res.paginated(
-        paginatedNotifications,
+        result.documents,
         {
-          page: parseInt(page),
-          limit: parseInt(limit),
-          totalItems: filteredNotifications.length,
-          totalPages,
-          unreadCount,
+          page: pageNum,
+          limit: limitNum,
+          totalItems: result.total,
+          totalPages: Math.ceil(result.total / limitNum),
+          unreadCount: unreadResult.total,
         },
         "Notifications retrieved successfully",
       );
     } catch (error) {
       logger.error("Get notifications failed", {
         adminId: req.user?.id,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Mark a single admin notification as read
+   */
+  async markNotificationRead(req, res) {
+    try {
+      const { id } = req.params;
+      const notifCollectionId =
+        config.database.appwrite.notificationsCollectionId;
+
+      // Verify the document exists and belongs to the admin scope
+      let doc;
+      try {
+        doc = await this.databases.getDocument(
+          config.database.appwrite.databaseId,
+          notifCollectionId,
+          id,
+        );
+      } catch {
+        throw new NotFoundError("Notification");
+      }
+
+      if (doc.userId !== "__admin__") {
+        throw new NotFoundError("Notification");
+      }
+
+      const updated = await this.databases.updateDocument(
+        config.database.appwrite.databaseId,
+        notifCollectionId,
+        id,
+        { read: true },
+      );
+
+      res.success(updated, "Notification marked as read");
+    } catch (error) {
+      logger.error("Mark notification read failed", {
+        adminId: req.user?.id,
+        notificationId: req.params?.id,
         error: error.message,
       });
       throw error;
@@ -1997,6 +2193,870 @@ class AdminController {
         typeBreakdown: {},
         recentTransactions: [],
       };
+    }
+  }
+
+  // ── Audit Logs ─────────────────────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/admin/audit-logs
+   * Returns paginated audit log entries, filterable by actorId, actorRole,
+   * action, entity, date range.
+   */
+  async getAuditLogs(req, res) {
+    try {
+      const {
+        actorId,
+        actorRole,
+        action,
+        entity,
+        startDate,
+        endDate,
+        page = 1,
+        limit = 50,
+      } = req.query;
+
+      const { logs, total } = await auditService.queryLogs({
+        actorId,
+        actorRole,
+        action,
+        entity,
+        startDate,
+        endDate,
+        page,
+        limit,
+      });
+
+      const totalPages = Math.ceil(total / parseInt(limit));
+
+      res.paginated(
+        logs,
+        {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalItems: total,
+          totalPages,
+        },
+        "Audit logs retrieved successfully",
+      );
+    } catch (error) {
+      logger.error("Get audit logs failed", {
+        adminId: req.user?.id,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  // ── Fraud Monitoring ───────────────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/admin/fraud-flags
+   * Returns paginated fraud flag records, filterable by severity and status.
+   */
+  async getFraudFlags(req, res) {
+    try {
+      const {
+        severity,
+        status,
+        startDate,
+        endDate,
+        page = 1,
+        limit = 50,
+      } = req.query;
+
+      const { flags, total } = await fraudService.queryFlags({
+        severity,
+        status,
+        startDate,
+        endDate,
+        page,
+        limit,
+      });
+
+      const totalPages = Math.ceil(total / parseInt(limit));
+
+      res.paginated(
+        flags,
+        {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalItems: total,
+          totalPages,
+        },
+        "Fraud flags retrieved successfully",
+      );
+    } catch (error) {
+      logger.error("Get fraud flags failed", {
+        adminId: req.user?.id,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * PUT /api/v1/admin/fraud-flags/:flagId
+   * Actions: mark_safe | escalate | block_user
+   * For block_user the transaction userId is resolved and the account is suspended.
+   */
+  async updateFraudFlag(req, res) {
+    try {
+      const { flagId } = req.params;
+      const { action, notes } = req.body;
+
+      const allowedActions = ["mark_safe", "escalate", "block_user"];
+      if (!allowedActions.includes(action)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid action. Must be one of: ${allowedActions.join(", ")}`,
+        });
+      }
+
+      let flagStatus;
+      switch (action) {
+        case "mark_safe":
+          flagStatus = "resolved";
+          break;
+        case "escalate":
+          flagStatus = "escalated";
+          break;
+        case "block_user":
+          flagStatus = "escalated";
+          break;
+        default:
+          flagStatus = "open";
+      }
+
+      // Update the flag record
+      const updated = await fraudService.updateFlag(flagId, {
+        status: flagStatus,
+        reviewedBy: req.user.id,
+        notes,
+      });
+
+      // If block_user, fetch the transaction to get userId and suspend the account
+      if (action === "block_user") {
+        try {
+          const flag = await this.databases.getDocument(
+            config.database.appwrite.databaseId,
+            config.collections.fraudFlagsId,
+            flagId,
+          );
+          if (flag?.transactionId) {
+            const tx = await this.databases.getDocument(
+              config.database.appwrite.databaseId,
+              config.collections.transactionsId,
+              flag.transactionId,
+            );
+            if (tx?.userId) {
+              await this.users.updateLabels(tx.userId, {
+                accountStatus: "blocked",
+                statusReason: `Blocked by admin ${req.user.id} via fraud flag ${flagId}`,
+                statusUpdatedBy: req.user.id,
+                statusUpdatedAt: new Date().toISOString(),
+              });
+            }
+          }
+        } catch (_blockErr) {
+          // Non-fatal — log but don't fail the request
+          logger.warn("block_user step failed during fraud flag update", {
+            flagId,
+            error: _blockErr.message,
+          });
+        }
+      }
+
+      // Audit the admin action
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: `FRAUD_FLAG_${action.toUpperCase()}`,
+        entity: "transaction",
+        entityId: flagId,
+        metadata: { action, notes },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
+
+      logger.audit(`FRAUD_FLAG_${action.toUpperCase()}`, req.user.id, {
+        flagId,
+        action,
+        notes,
+        ip: req.ip,
+      });
+
+      res.success(updated, "Fraud flag updated successfully");
+    } catch (error) {
+      logger.error("Update fraud flag failed", {
+        adminId: req.user?.id,
+        flagId: req.params.flagId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  // ── Merchant Administration ───────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/admin/merchants
+   *
+   * List all merchants with optional filters.
+   * Query params: page, limit, status (pending|approved|rejected), search
+   */
+  async getMerchants(req, res) {
+    try {
+      const { page = 1, limit = 20, status, search } = req.query;
+
+      const merchantService = require("../services/merchantService");
+      const result = await merchantService.listMerchants({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        status,
+        search,
+      });
+
+      const totalPages = Math.ceil(result.total / parseInt(limit));
+
+      res.paginated(
+        result.documents,
+        {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalItems: result.total,
+          totalPages,
+        },
+        "Merchants retrieved successfully",
+      );
+    } catch (error) {
+      logger.error("Get merchants failed", {
+        adminId: req.user?.id,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/merchants/:merchantId
+   *
+   * Get a single merchant with wallet details.
+   */
+  async getMerchantById(req, res) {
+    try {
+      const { merchantId } = req.params;
+      const merchantService = require("../services/merchantService");
+
+      const merchant = await merchantService.getMerchantById(merchantId);
+
+      if (!merchant) {
+        throw new NotFoundError("Merchant");
+      }
+
+      res.success(merchant, "Merchant retrieved successfully");
+    } catch (error) {
+      logger.error("Get merchant by ID failed", {
+        adminId: req.user?.id,
+        merchantId: req.params.merchantId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * PATCH /api/v1/admin/merchants/:merchantId/approve
+   *
+   * Approve a pending merchant:
+   *   - generate till number
+   *   - create merchant wallet
+   *   - set status = "approved"
+   */
+  async approveMerchant(req, res) {
+    try {
+      const { merchantId } = req.params;
+      const merchantService = require("../services/merchantService");
+
+      const merchant = await merchantService.approve(merchantId);
+
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "MERCHANT_APPROVED",
+        entity: "merchant",
+        entityId: merchantId,
+        metadata: {
+          tillNumber: merchant.tillNumber,
+          businessName: merchant.businessName,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
+
+      logger.audit("MERCHANT_APPROVED", req.user.id, {
+        merchantId,
+        tillNumber: merchant.tillNumber,
+        businessName: merchant.businessName,
+        ip: req.ip,
+      });
+
+      // Non-blocking approval email to merchant owner
+      this.users
+        .get(merchant.ownerId)
+        .then((ownerUser) => {
+          const firstName = ownerUser.name
+            ? ownerUser.name.split(" ")[0]
+            : "there";
+          return emailService.sendMerchantApprovedEmail(
+            ownerUser.email,
+            firstName,
+            merchant.businessName,
+            merchant.tillNumber,
+          );
+        })
+        .catch((err) =>
+          logger.warn(
+            "AdminController: merchant approved email failed (non-fatal)",
+            {
+              merchantId,
+              error: err.message,
+            },
+          ),
+        );
+
+      res.success(
+        {
+          merchantId: merchant.$id,
+          status: merchant.status,
+          tillNumber: merchant.tillNumber,
+          businessName: merchant.businessName,
+        },
+        `Merchant "${merchant.businessName}" approved. Till number: ${merchant.tillNumber}`,
+      );
+    } catch (error) {
+      logger.error("Approve merchant failed", {
+        adminId: req.user?.id,
+        merchantId: req.params.merchantId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * PATCH /api/v1/admin/merchants/:merchantId/reject
+   *
+   * Reject a pending merchant application.
+   * Body: { reason? }
+   */
+  async rejectMerchant(req, res) {
+    try {
+      const { merchantId } = req.params;
+      const { reason = "" } = req.body;
+
+      const merchantService = require("../services/merchantService");
+      const merchant = await merchantService.reject(merchantId, reason);
+
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "MERCHANT_REJECTED",
+        entity: "merchant",
+        entityId: merchantId,
+        metadata: {
+          businessName: merchant.businessName,
+          reason: reason.trim(),
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
+
+      logger.audit("MERCHANT_REJECTED", req.user.id, {
+        merchantId,
+        businessName: merchant.businessName,
+        reason,
+        ip: req.ip,
+      });
+
+      // Non-blocking rejection email + in-app notification to merchant owner
+      this.users
+        .get(merchant.ownerId)
+        .then((ownerUser) => {
+          const firstName = ownerUser.name
+            ? ownerUser.name.split(" ")[0]
+            : "there";
+          return emailService.sendMerchantRejectedEmail(
+            ownerUser.email,
+            firstName,
+            merchant.businessName,
+            reason,
+          );
+        })
+        .catch((err) =>
+          logger.warn(
+            "AdminController: merchant rejected email failed (non-fatal)",
+            {
+              merchantId,
+              error: err.message,
+            },
+          ),
+        );
+
+      res.success(
+        {
+          merchantId: merchant.$id,
+          status: merchant.status,
+          businessName: merchant.businessName,
+        },
+        `Merchant "${merchant.businessName}" rejected`,
+      );
+    } catch (error) {
+      logger.error("Reject merchant failed", {
+        adminId: req.user?.id,
+        merchantId: req.params.merchantId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/merchants/:merchantId/analytics
+   *
+   * Get transaction analytics for a specific merchant.
+   * Query params: period (day | week | month | quarter | year)
+   */
+  async getMerchantAnalytics(req, res) {
+    try {
+      const { merchantId } = req.params;
+      const { period = "month" } = req.query;
+
+      const merchantService = require("../services/merchantService");
+      const analytics = await merchantService.getAnalytics(merchantId, {
+        period,
+      });
+
+      res.success(analytics, "Merchant analytics retrieved successfully");
+    } catch (error) {
+      logger.error("Get merchant analytics failed", {
+        adminId: req.user?.id,
+        merchantId: req.params.merchantId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  // ── Payout Administration ─────────────────────────────────────────────────
+
+  /**
+   * GET /api/v1/admin/payouts
+   *
+   * List all payouts with optional filters.
+   * Query params: page, limit, status, merchantId, method
+   */
+  async getPayouts(req, res) {
+    try {
+      const { page = 1, limit = 20, status, merchantId, method } = req.query;
+
+      const payoutService = require("../services/payoutService");
+      const result = await payoutService.listPayouts({
+        page: parseInt(page),
+        limit: parseInt(limit),
+        status,
+        merchantId,
+        method,
+      });
+
+      const totalPages = Math.ceil(result.total / parseInt(limit));
+
+      // Mask destination in admin list view
+      const documents = result.documents.map((p) => ({
+        ...p,
+        destination: p.destination
+          ? `${"*".repeat(Math.max(p.destination.length - 4, 2))}${p.destination.slice(-4)}`
+          : "****",
+      }));
+
+      res.paginated(
+        documents,
+        {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalItems: result.total,
+          totalPages,
+        },
+        "Payouts retrieved successfully",
+      );
+    } catch (error) {
+      logger.error("Admin get payouts failed", {
+        adminId: req.user?.id,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * GET /api/v1/admin/payouts/:payoutId
+   *
+   * Get a single payout record including full destination (admin only).
+   */
+  async getPayoutById(req, res) {
+    try {
+      const { payoutId } = req.params;
+      const payoutsColId = config.database.appwrite.payoutsCollectionId;
+
+      if (!payoutsColId) {
+        throw new NotFoundError("Payout");
+      }
+
+      const payout = await this.databases.getDocument(
+        config.database.appwrite.databaseId,
+        payoutsColId,
+        payoutId,
+      );
+
+      res.success(payout, "Payout retrieved successfully");
+    } catch (error) {
+      logger.error("Admin get payout by ID failed", {
+        adminId: req.user?.id,
+        payoutId: req.params.payoutId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * PATCH /api/v1/admin/payouts/:payoutId/process
+   *
+   * Admin manually processes a pending or pending_review payout.
+   */
+  async processPayout(req, res) {
+    try {
+      const { payoutId } = req.params;
+      const payoutService = require("../services/payoutService");
+
+      const payout = await payoutService.adminProcessPayout(
+        payoutId,
+        req.user.id,
+      );
+
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "PAYOUT_PROCESSED",
+        entity: "payout",
+        entityId: payoutId,
+        metadata: {
+          merchantId: payout.merchantId,
+          amount: payout.amount,
+          method: payout.method,
+          status: payout.status,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
+
+      logger.audit("PAYOUT_PROCESSED", req.user.id, {
+        payoutId,
+        merchantId: payout.merchantId,
+        status: payout.status,
+        ip: req.ip,
+      });
+
+      // Notify admin dashboard of outcome
+      setImmediate(() => {
+        try {
+          const {
+            createAdminNotification,
+          } = require("../services/notificationService");
+          createAdminNotification(
+            "transaction",
+            `Payout ${payout.status === "success" ? "Completed" : "Failed"}`,
+            `Admin-processed payout of ${payout.amount} ${payout.currency} is now ${payout.status}`,
+            { link: `/payouts/${payoutId}` },
+          );
+        } catch (_) {
+          /* non-fatal */
+        }
+      });
+
+      res.success(
+        {
+          payoutId: payout.$id,
+          status: payout.status,
+          reference: payout.reference,
+        },
+        `Payout processed — status: ${payout.status}`,
+      );
+    } catch (error) {
+      logger.error("Admin process payout failed", {
+        adminId: req.user?.id,
+        payoutId: req.params.payoutId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * PATCH /api/v1/admin/payouts/:payoutId/fail
+   *
+   * Admin manually marks a payout as failed and restores merchant wallet.
+   * Body: { reason? }
+   */
+  async failPayout(req, res) {
+    try {
+      const { payoutId } = req.params;
+      const { reason = "Manually failed by admin" } = req.body;
+
+      const payoutService = require("../services/payoutService");
+      const payout = await payoutService.adminFailPayout(
+        payoutId,
+        req.user.id,
+        reason,
+      );
+
+      auditService.logAction({
+        actorId: req.user.id,
+        actorRole: "admin",
+        action: "PAYOUT_FAILED",
+        entity: "payout",
+        entityId: payoutId,
+        metadata: {
+          merchantId: payout.merchantId,
+          amount: payout.amount,
+          method: payout.method,
+          reason,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
+
+      logger.audit("PAYOUT_FAILED", req.user.id, {
+        payoutId,
+        merchantId: payout.merchantId,
+        reason,
+        ip: req.ip,
+      });
+
+      res.success(
+        { payoutId: payout.$id, status: payout.status },
+        "Payout marked as failed and wallet balance restored",
+      );
+    } catch (error) {
+      logger.error("Admin fail payout failed", {
+        adminId: req.user?.id,
+        payoutId: req.params.payoutId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all payment cards across all users (admin view)
+   * Supports pagination and filtering by status, cardBrand, cardType, and search (userId or cardLast4).
+   */
+  async getAdminCards(req, res) {
+    try {
+      const {
+        page = 1,
+        limit = 25,
+        status,
+        cardBrand,
+        cardType,
+        search,
+      } = req.query;
+
+      const pageNum = Math.max(1, parseInt(page) || 1);
+      const pageLimit = Math.min(100, Math.max(1, parseInt(limit) || 25));
+
+      if (!config.collections.cardsId) {
+        return res.paginated(
+          [],
+          { page: pageNum, limit: pageLimit, totalItems: 0, totalPages: 0 },
+          "Cards collection not configured",
+        );
+      }
+
+      // Build Appwrite query array for the paginated result
+      const queries = [
+        Query.orderDesc("$createdAt"),
+        Query.limit(pageLimit),
+        Query.offset((pageNum - 1) * pageLimit),
+      ];
+
+      if (status) queries.push(Query.equal("status", status));
+      if (cardBrand) queries.push(Query.equal("cardBrand", cardBrand));
+      if (cardType) queries.push(Query.equal("cardType", cardType));
+
+      // search: exact cardLast4 (exactly 4 digits) or exact userId (alphanumeric)
+      if (search && search.trim()) {
+        const q = search.trim();
+        if (/^\d{4}$/.test(q)) {
+          queries.push(Query.equal("cardLast4", q));
+        } else {
+          queries.push(Query.equal("userId", q));
+        }
+      }
+
+      // Fetch main dataset + global active/frozen totals in parallel
+      const [cardList, activeResult, frozenResult] = await Promise.all([
+        this.databases.listDocuments(
+          config.database.appwrite.databaseId,
+          config.collections.cardsId,
+          queries,
+        ),
+        this.databases.listDocuments(
+          config.database.appwrite.databaseId,
+          config.collections.cardsId,
+          [Query.equal("status", "active"), Query.limit(1)],
+        ),
+        this.databases.listDocuments(
+          config.database.appwrite.databaseId,
+          config.collections.cardsId,
+          [Query.equal("status", "frozen"), Query.limit(1)],
+        ),
+      ]);
+
+      // Strip sensitive fields — never expose token or fingerprint
+      const cards = cardList.documents.map((card) => ({
+        id: card.$id,
+        userId: card.userId,
+        cardLast4: card.cardLast4,
+        cardBrand: card.cardBrand,
+        expiryMonth: card.expiryMonth,
+        expiryYear: card.expiryYear,
+        holderName: card.holderName,
+        label: card.label || null,
+        cardType: card.cardType,
+        status: card.status,
+        isDefault: card.isDefault,
+        provider: card.provider || "internal",
+        color: card.color || "from-blue-600 via-blue-500 to-teal-500",
+        createdAt: card.createdAt || card.$createdAt,
+        updatedAt: card.updatedAt || card.$updatedAt,
+      }));
+
+      res.paginated(
+        cards,
+        {
+          page: pageNum,
+          limit: pageLimit,
+          totalItems: cardList.total,
+          totalPages: Math.ceil(cardList.total / pageLimit),
+          stats: {
+            active: activeResult.total,
+            frozen: frozenResult.total,
+          },
+        },
+        "Cards retrieved successfully",
+      );
+    } catch (error) {
+      logger.error("Get admin cards failed", {
+        adminId: req.user?.id,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Freeze or unfreeze a user's card (admin override — no ownership restriction).
+   */
+  async adminUpdateCardStatus(req, res) {
+    try {
+      const { cardId } = req.params;
+      const { status } = req.body;
+
+      if (!config.collections.cardsId) {
+        return res
+          .status(503)
+          .json({ success: false, message: "Cards collection not configured" });
+      }
+
+      // Fetch the card — Appwrite throws a 404 AppwriteException if not found
+      const card = await this.databases.getDocument(
+        config.database.appwrite.databaseId,
+        config.collections.cardsId,
+        cardId,
+      );
+
+      // Idempotent — return early if already in desired state
+      if (card.status === status) {
+        return res.success(
+          {
+            id: card.$id,
+            userId: card.userId,
+            cardLast4: card.cardLast4,
+            cardBrand: card.cardBrand,
+            status: card.status,
+            updatedAt: card.updatedAt || card.$updatedAt,
+          },
+          `Card is already ${status}`,
+        );
+      }
+
+      const updatedCard = await this.databases.updateDocument(
+        config.database.appwrite.databaseId,
+        config.collections.cardsId,
+        cardId,
+        {
+          status,
+          updatedAt: new Date().toISOString(),
+        },
+      );
+
+      const action =
+        status === "frozen" ? "ADMIN_CARD_FROZEN" : "ADMIN_CARD_UNFROZEN";
+
+      logger.audit(action, req.user?.id, {
+        cardId,
+        userId: card.userId,
+        cardLast4: card.cardLast4,
+        oldStatus: card.status,
+        newStatus: status,
+        ip: req.ip,
+      });
+
+      auditService.logAction({
+        actorId: req.user?.id,
+        actorRole: req.user?.role || "admin",
+        action,
+        entity: "card",
+        entityId: cardId,
+        metadata: {
+          userId: card.userId,
+          cardLast4: card.cardLast4,
+          oldStatus: card.status,
+          newStatus: status,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get("User-Agent") || "",
+      });
+
+      res.success(
+        {
+          id: updatedCard.$id,
+          userId: updatedCard.userId,
+          cardLast4: updatedCard.cardLast4,
+          cardBrand: updatedCard.cardBrand,
+          status: updatedCard.status,
+          updatedAt: updatedCard.updatedAt || updatedCard.$updatedAt,
+        },
+        `Card ${status === "frozen" ? "frozen" : "unfrozen"} successfully`,
+      );
+    } catch (error) {
+      logger.error("Admin update card status failed", {
+        adminId: req.user?.id,
+        cardId: req.params.cardId,
+        error: error.message,
+      });
+      throw error;
     }
   }
 }

@@ -24,6 +24,8 @@ const newsletterRoutes = require("./newsletter");
 const chatRoutes = require("./chat");
 const analyticsRoutes = require("./analytics");
 const cardRoutes = require("./cards");
+const merchantRoutes = require("./merchants");
+const subscriptionRoutes = require("./subscriptions");
 
 // Route configuration with middleware
 router.use("/auth", authRoutes);
@@ -54,6 +56,8 @@ router.use("/newsletter", newsletterRoutes);
 router.use("/chat", chatRoutes);
 router.use("/analytics", analyticsRoutes);
 router.use("/cards", cardRoutes);
+router.use("/merchants", merchantRoutes);
+router.use("/subscriptions", subscriptionRoutes);
 
 // API v1 status
 router.get("/", (req, res) => {
@@ -75,6 +79,7 @@ router.get("/", (req, res) => {
         applications: "/api/v1/applications",
         blog: "/api/v1/blog",
         analytics: "/api/v1/analytics",
+        merchants: "/api/v1/merchants",
       },
     },
     "API v1 is operational",

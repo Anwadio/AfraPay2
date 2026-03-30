@@ -429,10 +429,355 @@ async function sendTransactionAlertEmail(email, firstName, txInfo = {}) {
   return data;
 }
 
+/**
+ * Notify a user that their merchant application has been received and is under review.
+ *
+ * @param {string} email        - recipient email
+ * @param {string} firstName    - user's first name (or fallback greeting)
+ * @param {string} businessName - the business name they applied with
+ */
+async function sendMerchantApplicationReceivedEmail(
+  email,
+  firstName,
+  businessName,
+) {
+  const dashboardUrl = `${APP_URL}/merchant`;
+
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: "We've received your AfraPay merchant application",
+    html: `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+        <body style="font-family:sans-serif;background:#f4f4f5;margin:0;padding:0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+            <tr><td align="center">
+              <table width="520" cellpadding="0" cellspacing="0"
+                style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                <tr>
+                  <td style="background:#1a56db;padding:28px 40px;">
+                    <h1 style="color:#fff;margin:0;font-size:22px;">AfraPay</h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:36px 40px;">
+                    <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">
+                      Application received, ${firstName}!
+                    </h2>
+                    <p style="color:#374151;line-height:1.6;margin:0 0 20px;">
+                      Thank you for submitting your merchant application for
+                      <strong>${businessName}</strong>. Our team will review your
+                      application and get back to you shortly.
+                    </p>
+                    <table width="100%" cellpadding="0" cellspacing="0"
+                      style="background:#eff6ff;border-left:4px solid #1a56db;border-radius:4px;
+                             padding:16px 20px;font-size:14px;color:#374151;margin-bottom:24px;">
+                      <tr>
+                        <td>
+                          <strong style="display:block;margin-bottom:8px;color:#1e3a5f;">What happens next?</strong>
+                          <ol style="margin:0;padding-left:20px;line-height:2;">
+                            <li>Our team reviews your business details (usually within 1–2 business days)</li>
+                            <li>You will receive an email once a decision has been made</li>
+                            <li>If approved, you'll receive your AfraPay Till Number immediately</li>
+                          </ol>
+                        </td>
+                      </tr>
+                    </table>
+                    <a href="${dashboardUrl}"
+                      style="display:inline-block;background:#1a56db;color:#fff;
+                             text-decoration:none;padding:14px 32px;border-radius:6px;
+                             font-weight:600;font-size:15px;">
+                      Check Application Status
+                    </a>
+                    <p style="margin:24px 0 0;font-size:13px;color:#9ca3af;">
+                      If you did not submit this application, please contact
+                      <a href="mailto:support@afrapayafrica.com" style="color:#1a56db;">support@afrapayafrica.com</a>.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+                    <p style="margin:0;font-size:12px;color:#9ca3af;">
+                      © ${new Date().getFullYear()} AfraPay. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+
+  if (error) {
+    logger.warn(
+      "Resend: failed to send merchant application received email (non-fatal)",
+      {
+        to: email,
+        error: error.message,
+      },
+    );
+    return null;
+  }
+
+  logger.info("Resend: merchant application received email sent", {
+    to: email,
+    id: data?.id,
+  });
+  return data;
+}
+
+/**
+ * Notify a merchant owner that their application has been approved.
+ *
+ * @param {string} email        - recipient email
+ * @param {string} firstName    - user's first name
+ * @param {string} businessName - approved business name
+ * @param {string} tillNumber   - assigned AfraPay Till Number
+ */
+async function sendMerchantApprovedEmail(
+  email,
+  firstName,
+  businessName,
+  tillNumber,
+) {
+  const merchantHubUrl = `${APP_URL}/merchant`;
+
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: `🎉 Congratulations! Your AfraPay merchant account is approved`,
+    html: `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+        <body style="font-family:sans-serif;background:#f4f4f5;margin:0;padding:0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+            <tr><td align="center">
+              <table width="520" cellpadding="0" cellspacing="0"
+                style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                <tr>
+                  <td style="background:#1a56db;padding:28px 40px;">
+                    <h1 style="color:#fff;margin:0;font-size:22px;">AfraPay</h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:36px 40px;">
+                    <div style="text-align:center;margin-bottom:24px;">
+                      <div style="display:inline-block;background:#dcfce7;border-radius:50%;
+                                  width:64px;height:64px;line-height:64px;font-size:32px;text-align:center;">
+                        ✓
+                      </div>
+                    </div>
+                    <h2 style="margin:0 0 8px;color:#111827;font-size:22px;text-align:center;">
+                      You're approved, ${firstName}!
+                    </h2>
+                    <p style="color:#6b7280;text-align:center;margin:0 0 28px;font-size:15px;">
+                      ${businessName} is now live on AfraPay
+                    </p>
+                    <table width="100%" cellpadding="0" cellspacing="0"
+                      style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;
+                             padding:20px 24px;margin-bottom:28px;">
+                      <tr>
+                        <td style="font-size:13px;color:#166534;font-weight:600;
+                                   text-transform:uppercase;letter-spacing:.5px;">
+                          Your AfraPay Till Number
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:32px;font-weight:700;color:#15803d;
+                                   letter-spacing:4px;padding-top:8px;font-family:monospace;">
+                          ${tillNumber}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="font-size:12px;color:#4ade80;padding-top:4px;">
+                          Share this number with your customers to accept payments
+                        </td>
+                      </tr>
+                    </table>
+                    <p style="color:#374151;line-height:1.6;margin:0 0 24px;">
+                      You can now start accepting payments through AfraPay. Visit your
+                      Merchant Hub to view your dashboard, track sales, and manage payouts.
+                    </p>
+                    <a href="${merchantHubUrl}"
+                      style="display:inline-block;background:#16a34a;color:#fff;
+                             text-decoration:none;padding:14px 32px;border-radius:6px;
+                             font-weight:600;font-size:15px;">
+                      Open Merchant Hub
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+                    <p style="margin:0;font-size:12px;color:#9ca3af;">
+                      © ${new Date().getFullYear()} AfraPay. All rights reserved.
+                      Questions? <a href="mailto:support@afrapayafrica.com" style="color:#1a56db;">Contact support</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+
+  if (error) {
+    logger.warn("Resend: failed to send merchant approved email (non-fatal)", {
+      to: email,
+      error: error.message,
+    });
+    return null;
+  }
+
+  logger.info("Resend: merchant approved email sent", {
+    to: email,
+    id: data?.id,
+  });
+  return data;
+}
+
+/**
+ * Notify a merchant owner that their application has been rejected.
+ *
+ * @param {string} email        - recipient email
+ * @param {string} firstName    - user's first name
+ * @param {string} businessName - business name that was rejected
+ * @param {string} reason       - rejection reason / missing documents note
+ */
+async function sendMerchantRejectedEmail(
+  email,
+  firstName,
+  businessName,
+  reason,
+) {
+  const supportUrl = `${APP_URL}/support`;
+  const reapplyUrl = `${APP_URL}/merchant`;
+  const hasReason = reason && reason.trim().length > 0;
+
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: "Update on your AfraPay merchant application",
+    html: `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+        <body style="font-family:sans-serif;background:#f4f4f5;margin:0;padding:0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+            <tr><td align="center">
+              <table width="520" cellpadding="0" cellspacing="0"
+                style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                <tr>
+                  <td style="background:#1a56db;padding:28px 40px;">
+                    <h1 style="color:#fff;margin:0;font-size:22px;">AfraPay</h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:36px 40px;">
+                    <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">
+                      Hi ${firstName}, an update on your application
+                    </h2>
+                    <p style="color:#374151;line-height:1.6;margin:0 0 20px;">
+                      After reviewing your merchant application for
+                      <strong>${businessName}</strong>, we were unable to approve it at this time.
+                    </p>
+                    ${
+                      hasReason
+                        ? `
+                    <table width="100%" cellpadding="0" cellspacing="0"
+                      style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;
+                             padding:16px 20px;font-size:14px;color:#7f1d1d;margin-bottom:24px;">
+                      <tr>
+                        <td>
+                          <strong style="display:block;margin-bottom:6px;">Reason for rejection:</strong>
+                          <span style="line-height:1.6;">${reason.trim()}</span>
+                        </td>
+                      </tr>
+                    </table>
+                    `
+                        : `
+                    <table width="100%" cellpadding="0" cellspacing="0"
+                      style="background:#fef2f2;border-left:4px solid #ef4444;border-radius:4px;
+                             padding:16px 20px;font-size:14px;color:#7f1d1d;margin-bottom:24px;">
+                      <tr>
+                        <td>
+                          Please contact our support team for more details on the decision and
+                          guidance on resubmitting your application.
+                        </td>
+                      </tr>
+                    </table>
+                    `
+                    }
+                    <p style="color:#374151;line-height:1.6;margin:0 0 24px;">
+                      You are welcome to address the points above and resubmit your application.
+                      Our team is here to help you get set up successfully.
+                    </p>
+                    <table cellpadding="0" cellspacing="0">
+                      <tr>
+                        <td style="padding-right:12px;">
+                          <a href="${reapplyUrl}"
+                            style="display:inline-block;background:#1a56db;color:#fff;
+                                   text-decoration:none;padding:12px 24px;border-radius:6px;
+                                   font-weight:600;font-size:14px;">
+                            Resubmit Application
+                          </a>
+                        </td>
+                        <td>
+                          <a href="${supportUrl}"
+                            style="display:inline-block;background:#f3f4f6;color:#374151;
+                                   text-decoration:none;padding:12px 24px;border-radius:6px;
+                                   font-weight:600;font-size:14px;border:1px solid #e5e7eb;">
+                            Contact Support
+                          </a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+                    <p style="margin:0;font-size:12px;color:#9ca3af;">
+                      © ${new Date().getFullYear()} AfraPay. All rights reserved.
+                      <a href="mailto:support@afrapayafrica.com" style="color:#1a56db;">support@afrapayafrica.com</a>
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+
+  if (error) {
+    logger.warn("Resend: failed to send merchant rejected email (non-fatal)", {
+      to: email,
+      error: error.message,
+    });
+    return null;
+  }
+
+  logger.info("Resend: merchant rejected email sent", {
+    to: email,
+    id: data?.id,
+  });
+  return data;
+}
+
 module.exports = {
   sendVerificationEmail,
   sendPasswordResetEmail,
   sendMFAOtpEmail,
   sendLoginAlertEmail,
   sendTransactionAlertEmail,
+  sendMerchantApplicationReceivedEmail,
+  sendMerchantApprovedEmail,
+  sendMerchantRejectedEmail,
 };

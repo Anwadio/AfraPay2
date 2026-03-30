@@ -91,24 +91,27 @@ router.get(
   readLimiter,
   [
     ...pagination,
-    query("category").optional().isString().trim().escape(),
-    query("type").optional().isIn(TYPES).withMessage("Invalid content type"),
+    query("category").optional({ checkFalsy: true }).isString().trim().escape(),
+    query("type")
+      .optional({ checkFalsy: true })
+      .isIn(TYPES)
+      .withMessage("Invalid content type"),
     query("level")
-      .optional()
+      .optional({ checkFalsy: true })
       .isIn(LEVELS)
       .withMessage("Invalid difficulty level"),
-    query("featured").optional().isIn(["true", "false"]),
+    query("featured").optional({ checkFalsy: true }).isIn(["true", "false"]),
     query("search")
-      .optional()
+      .optional({ checkFalsy: true })
       .isString()
       .trim()
       .isLength({ max: 100 })
       .escape(),
-    query("tags").optional().isString().trim(),
+    query("tags").optional({ checkFalsy: true }).isString().trim(),
     query("sortBy")
-      .optional()
+      .optional({ checkFalsy: true })
       .isIn(["publishedAt", "views", "likes", "title", "durationMinutes"]),
-    query("order").optional().isIn(["asc", "desc"]),
+    query("order").optional({ checkFalsy: true }).isIn(["asc", "desc"]),
   ],
   validateRequest,
   asyncHandler(education.listContent.bind(education)),

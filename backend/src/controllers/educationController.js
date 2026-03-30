@@ -62,6 +62,10 @@ const COL = {
 };
 const BUCKET = () => config.database.appwrite.contentStorageBucketId;
 
+// Admin notifications (lazy require to avoid circular dep risks)
+const getCreateAdminNotification = () =>
+  require("../services/notificationService").createAdminNotification;
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CONTENT_TYPES = [
   "article",
@@ -124,12 +128,20 @@ class EducationController {
       featured,
       search,
       tags,
+      status: statusParam,
       sortBy = "publishedAt",
       order = "desc",
     } = req.query;
 
+    // Admins may filter by any status (or pass "all" to see everything).
+    // Non-admins always see published content only.
+    const isAdmin = ["admin", "super_admin"].includes(req.user?.role);
+    const resolvedStatus = isAdmin && statusParam ? statusParam : "published";
+
     const queries = [
-      Query.equal("status", "published"),
+      ...(isAdmin && statusParam === "all"
+        ? []
+        : [Query.equal("status", resolvedStatus)]),
       Query.limit(limit),
       Query.offset(offset),
     ];
@@ -529,10 +541,15 @@ class EducationController {
     requireCollection(COL.paths(), "learning paths");
 
     const { page, limit, offset } = paginate(req);
-    const { category, level, featured } = req.query;
+    const { category, level, featured, status: statusParam } = req.query;
+
+    const isAdmin = ["admin", "super_admin"].includes(req.user?.role);
+    const resolvedStatus = isAdmin && statusParam ? statusParam : "published";
 
     const queries = [
-      Query.equal("status", "published"),
+      ...(isAdmin && statusParam === "all"
+        ? []
+        : [Query.equal("status", resolvedStatus)]),
       Query.limit(limit),
       Query.offset(offset),
       Query.orderDesc("createdAt"),
@@ -818,6 +835,27 @@ class EducationController {
       pathId,
       enrolmentId: enrolment.$id,
     });
+
+    // Notify admins of the new enrollment (fire-and-forget)
+    setImmediate(() => {
+      getCreateAdminNotification()(
+        "enrollment",
+        "New Learning Path Enrollment",
+        `User ${userId} enrolled in learning path "${path.title || pathId}".`,
+        { link: `/users/${userId}` },
+      ).catch(() => {});
+
+      // Notify the enrolled user
+      const { createNotification } = require("./notificationController");
+      createNotification(
+        userId,
+        "system",
+        "Enrolled Successfully",
+        `You've been enrolled in "${path.title || "a new learning path"}". Start learning now!`,
+        `/education/paths/${pathId}`,
+      ).catch(() => {});
+    });
+
     res.status(201).json({
       success: true,
       data: enrolment,

@@ -15,6 +15,9 @@ import MerchantsPage from "./pages/MerchantsPage";
 import CardsPage from "./pages/CardsPage";
 import EducationPage from "./pages/EducationPage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import AuditLogsPage from "./pages/AuditLogsPage";
+import FraudMonitoringPage from "./pages/FraudMonitoringPage";
+import SubscriptionsPage from "./pages/SubscriptionsPage";
 import LoginPage from "./pages/LoginPage";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import "./index.css";
@@ -134,6 +137,36 @@ function App() {
                   <ProtectedRoute>
                     <AdminLayout>
                       <AnalyticsPage />
+                    </AdminLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/audit-logs"
+                element={
+                  <ProtectedRoute>
+                    <AdminLayout>
+                      <AuditLogsPage />
+                    </AdminLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/fraud-monitoring"
+                element={
+                  <ProtectedRoute>
+                    <AdminLayout>
+                      <FraudMonitoringPage />
+                    </AdminLayout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/subscriptions"
+                element={
+                  <ProtectedRoute>
+                    <AdminLayout>
+                      <SubscriptionsPage />
                     </AdminLayout>
                   </ProtectedRoute>
                 }

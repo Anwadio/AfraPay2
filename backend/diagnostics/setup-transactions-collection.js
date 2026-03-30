@@ -13,7 +13,7 @@
 "use strict";
 
 const { Client, Databases } = require("node-appwrite");
-require("dotenv").config();
+const path = require("path");`nrequire("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 
 const client = new Client()
   .setEndpoint(process.env.APPWRITE_ENDPOINT)

@@ -5,7 +5,8 @@
  * Usage: node setup-admin-user.js
  */
 
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "../.env") });
 const bcrypt = require("bcryptjs");
 const { Client, Users, Databases, ID } = require("node-appwrite");
 const config = require("../src/config/environment");

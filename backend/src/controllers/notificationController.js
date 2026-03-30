@@ -29,6 +29,10 @@ const {
   AuthorizationError,
 } = require("../middleware/monitoring/errorHandler");
 
+// Lazily resolved to avoid circular-require issues at module load time
+const getPushToUser = () =>
+  require("../services/notificationService").sendPushToUser;
+
 // ── Appwrite client ──────────────────────────────────────────────────────────
 const _client = new Client()
   .setEndpoint(config.database.appwrite.endpoint)
@@ -65,6 +69,14 @@ async function createNotification(userId, type, title, message, link = null) {
     const data = { userId, type, title, message, read: false };
     if (link) data.link = link;
     const doc = await db.createDocument(DB(), collectionId, ID.unique(), data);
+
+    // Fire push notification (non-blocking — never delays the caller)
+    setImmediate(() => {
+      getPushToUser()(userId, title, message, { type, link: link || "" }).catch(
+        () => {},
+      );
+    });
+
     return doc;
   } catch (err) {
     logger.warn("Failed to create notification (non-fatal)", {

@@ -13,6 +13,7 @@ import {
   Clock,
   ChevronRight,
   Sparkles,
+  Store,
 } from "lucide-react";
 import { DashboardLayout } from "../components/layout/DashboardLayout";
 import {
@@ -36,6 +37,7 @@ import {
 } from "../components/ui/PremiumUI";
 import { useAuth } from "../contexts/AuthContext";
 import { useCurrency } from "../contexts/CurrencyContext";
+import { useMerchant } from "../contexts/MerchantContext";
 import { formatCurrencyAmount } from "../utils/currency";
 import { userAPI, transactionAPI } from "../services/api";
 import { useTranslation } from "../utils/accessibility";
@@ -45,6 +47,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const { currency: displayCurrency, currencyMeta } = useCurrency();
   const { t } = useTranslation();
+  const { merchant, merchantStatus } = useMerchant();
 
   const [profile, setProfile] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -336,6 +339,99 @@ const Dashboard = () => {
             </GlassCard>
           </div>
         </AnimatedSection>
+
+        {/* ── Merchant Hub CTA ─────────────────────────────────── */}
+        {merchantStatus === "none" && (
+          <AnimatedSection delay={3}>
+            <GlassCard className="p-7 relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500/[0.04] to-teal-500/[0.04] pointer-events-none" />
+              <div className="relative flex items-center justify-between gap-6 flex-wrap">
+                <div className="flex items-center gap-5">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-teal-500 flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
+                    <Store className="w-8 h-8 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">
+                      Become a Merchant
+                    </h3>
+                    <p className="text-sm text-slate-500 mt-0.5 max-w-md">
+                      Accept payments, track sales, and grow your business with
+                      AfraPay&apos;s merchant tools.
+                    </p>
+                    <div className="flex flex-wrap gap-3 mt-2.5 text-xs text-slate-500">
+                      {[
+                        "Dedicated till number",
+                        "Merchant wallet",
+                        "Sales analytics",
+                        "Instant payouts",
+                      ].map((f) => (
+                        <span key={f} className="flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => navigate("/merchant")}
+                  className="shrink-0 px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-500 hover:to-teal-500 text-white font-semibold text-sm shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all hover:-translate-y-0.5 active:translate-y-0"
+                >
+                  <Store className="w-4 h-4" />
+                  Get Started Free
+                </button>
+              </div>
+            </GlassCard>
+          </AnimatedSection>
+        )}
+
+        {merchantStatus === "pending" && (
+          <AnimatedSection delay={3}>
+            <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl px-5 py-4">
+              <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-amber-800">
+                  Merchant Application Under Review
+                </p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Our team is reviewing your application. You&apos;ll be
+                  notified once approved.
+                </p>
+              </div>
+              <button
+                onClick={() => navigate("/merchant")}
+                className="shrink-0 px-3 py-1.5 rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-700 text-xs font-semibold transition-colors"
+              >
+                Check Status
+              </button>
+            </div>
+          </AnimatedSection>
+        )}
+
+        {merchantStatus === "approved" && (
+          <AnimatedSection delay={3}>
+            <div className="flex items-center justify-between gap-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl px-5 py-4">
+              <div className="flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold text-emerald-800">
+                    Merchant Account Active
+                  </p>
+                  <p className="text-xs text-emerald-700">
+                    Till #{merchant?.tillNumber || "—"} ·{" "}
+                    {merchant?.businessName}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate("/merchant")}
+                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-100 hover:bg-emerald-200 text-emerald-700 text-xs font-semibold transition-colors"
+              >
+                Open Merchant Hub <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </AnimatedSection>
+        )}
       </PageContainer>
     </DashboardLayout>
   );

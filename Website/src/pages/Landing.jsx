@@ -636,6 +636,152 @@ const Landing = () => {
         </Container>
       </Section>
 
+      {/* ── Merchant CTA ─────────────────────────────────── */}
+      <Section
+        spacing="xl"
+        className="bg-gradient-to-br from-slate-900 via-blue-950 to-teal-950 text-white relative overflow-hidden"
+      >
+        <div className="absolute inset-0 hero-grid opacity-10 pointer-events-none" />
+        <div className="glow-spot top-0 left-1/4 w-96 h-96 bg-blue-600/20" />
+        <div className="glow-spot bottom-0 right-1/4 w-80 h-80 bg-teal-600/20" />
+
+        <Container className="relative">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            {/* Left: content */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+            >
+              <Badge
+                variant="outline"
+                className="mb-6 border-blue-400/40 text-blue-300 bg-blue-500/10 flex items-center gap-1.5 w-fit"
+              >
+                <Building2 className="w-3.5 h-3.5" />
+                For Businesses
+              </Badge>
+
+              <h2 className="text-3xl md:text-4xl font-bold mb-4 leading-tight">
+                Start Accepting Payments.
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-teal-400">
+                  Get Your Business Till.
+                </span>
+              </h2>
+
+              <p className="text-lg text-neutral-300 mb-8 leading-relaxed">
+                Register your business on AfraPay and receive a dedicated till
+                number, merchant wallet, and real-time analytics — all free to
+                set up.
+              </p>
+
+              <div className="space-y-3 mb-8">
+                {[
+                  {
+                    icon: "Hash",
+                    text: "Unique till number for your business",
+                  },
+                  {
+                    icon: "Wallet",
+                    text: "Dedicated merchant wallet with instant settlement",
+                  },
+                  {
+                    icon: "TrendingUp",
+                    text: "Real-time sales analytics and reporting",
+                  },
+                  {
+                    icon: "Zap",
+                    text: "Withdraw funds to M-Pesa or bank instantly",
+                  },
+                ].map(({ icon, text }) => (
+                  <div
+                    key={text}
+                    className="flex items-center gap-3 text-neutral-200"
+                  >
+                    <div className="w-6 h-6 rounded-full bg-teal-500/20 border border-teal-400/30 flex items-center justify-center shrink-0">
+                      <Icon name={icon} className="w-3.5 h-3.5 text-teal-400" />
+                    </div>
+                    <span className="text-sm font-medium">{text}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  whileTap={{ scale: 0.97 }}
+                  onClick={() => navigate("/auth/register")}
+                  className="inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-teal-600 hover:from-blue-500 hover:to-teal-500 text-white font-bold text-base px-8 py-4 rounded-xl shadow-xl shadow-blue-900/40 transition-colors btn-glow"
+                >
+                  <Building2 className="w-5 h-5" />
+                  Register Your Business
+                </motion.button>
+                <p className="flex items-center gap-2 text-sm text-neutral-400">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  Free setup · No monthly fee
+                </p>
+              </div>
+            </motion.div>
+
+            {/* Right: stat tiles */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{
+                duration: 0.65,
+                delay: 0.15,
+                ease: [0.22, 1, 0.36, 1],
+              }}
+              className="grid grid-cols-2 gap-4"
+            >
+              {[
+                {
+                  label: "Setup Time",
+                  value: "< 2 min",
+                  sub: "Instant activation",
+                  color: "from-blue-500/20 to-blue-600/10 border-blue-400/20",
+                },
+                {
+                  label: "Sales Tracking",
+                  value: "Real-time",
+                  sub: "Live transaction data",
+                  color: "from-teal-500/20 to-teal-600/10 border-teal-400/20",
+                },
+                {
+                  label: "Settlement",
+                  value: "Instant",
+                  sub: "Same-day payout",
+                  color:
+                    "from-violet-500/20 to-violet-600/10 border-violet-400/20",
+                },
+                {
+                  label: "Commission",
+                  value: "0.5%",
+                  sub: "Per transaction",
+                  color:
+                    "from-amber-500/20 to-amber-600/10 border-amber-400/20",
+                },
+              ].map(({ label, value, sub, color }) => (
+                <motion.div
+                  key={label}
+                  whileHover={{ y: -4, scale: 1.02 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                  className={`bg-gradient-to-br ${color} rounded-2xl border p-5 text-center`}
+                >
+                  <p className="text-2xl font-bold text-white mb-1">{value}</p>
+                  <p className="text-sm font-semibold text-neutral-200">
+                    {label}
+                  </p>
+                  <p className="text-xs text-neutral-400 mt-0.5">{sub}</p>
+                </motion.div>
+              ))}
+            </motion.div>
+          </div>
+        </Container>
+      </Section>
+
       {/* ── Testimonials ─────────────────────────────────── */}
       <Section spacing="xl" className="bg-secondary-50">
         <Container>

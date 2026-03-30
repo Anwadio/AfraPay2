@@ -2,142 +2,196 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Global styles for admin dashboard */
-* {
-  scroll-behavior: smooth;
-}
-
-body {
-  font-family:
-    "Inter",
-    system-ui,
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-}
-
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #a1a1a1;
-}
-
-/* Loading spinner animation */
-@keyframes spin {
-  0% {
-    transform: rotate(0deg);
+/* ─── Base ─────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --font-sans:
+      "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+      sans-serif;
+    --color-brand: 37 99 235;
+    --color-surface: 248 250 252;
+    --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
   }
-  100% {
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    background-color: #f8fafc;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Dark sidebar scrollbar */
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* ─── Component Layer ───────────────────────────────────── */
+@layer components {
+  /* ── Cards ── */
+  .card {
+    @apply bg-white rounded-2xl border border-slate-100 shadow-card;
+  }
+  .card-hover {
+    @apply transition-all duration-200 hover:shadow-card-hover hover:-translate-y-0.5;
+  }
+  .card-header {
+    @apply px-6 py-4 border-b border-slate-100 flex items-center justify-between;
+  }
+  .card-body {
+    @apply px-6 py-5;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl font-medium text-sm
+           transition-all duration-150 focus:outline-none focus-visible:ring-2
+           focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50
+           select-none;
+  }
+  .btn-primary {
+    @apply btn bg-blue-600 text-white hover:bg-blue-700 active:scale-[0.98] shadow-sm hover:shadow-feature focus-visible:ring-blue-500 px-4 py-2.5;
+  }
+  .btn-secondary {
+    @apply btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 active:scale-[0.98] focus-visible:ring-slate-400 px-4 py-2.5;
+  }
+  .btn-ghost {
+    @apply btn text-slate-600 hover:bg-slate-100 hover:text-slate-900 px-3 py-2;
+  }
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700 active:scale-[0.98] focus-visible:ring-red-500 px-4 py-2.5;
+  }
+  .btn-icon {
+    @apply btn p-2 rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-700;
+  }
+
+  /* ── Inputs ── */
+  .input {
+    @apply block w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm
+           text-slate-900 placeholder:text-slate-400 shadow-sm
+           transition-all duration-150
+           focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400
+           hover:border-slate-300;
+  }
+  .select {
+    @apply input appearance-none cursor-pointer;
+  }
+  .label {
+    @apply block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5;
+  }
+
+  /* ── Table ── */
+  .table-container {
+    @apply bg-white rounded-2xl border border-slate-100 shadow-card overflow-hidden;
+  }
+  .table-header-cell {
+    @apply px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider whitespace-nowrap;
+  }
+  .table-cell {
+    @apply px-5 py-4 text-sm;
+  }
+  .table-row {
+    @apply hover:bg-slate-50/70 transition-colors duration-100;
+  }
+
+  /* ── Badges ── */
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold tracking-wide;
+  }
+  .badge-green {
+    @apply badge bg-emerald-50  text-emerald-700 ring-1 ring-inset ring-emerald-600/20;
+  }
+  .badge-red {
+    @apply badge bg-red-50     text-red-700     ring-1 ring-inset ring-red-600/20;
+  }
+  .badge-yellow {
+    @apply badge bg-amber-50   text-amber-700   ring-1 ring-inset ring-amber-600/20;
+  }
+  .badge-blue {
+    @apply badge bg-blue-50    text-blue-700    ring-1 ring-inset ring-blue-600/20;
+  }
+  .badge-gray {
+    @apply badge bg-slate-100  text-slate-600   ring-1 ring-inset ring-slate-500/20;
+  }
+  .badge-violet {
+    @apply badge bg-violet-50  text-violet-700  ring-1 ring-inset ring-violet-600/20;
+  }
+
+  /* ── Skeleton ── */
+  .skeleton {
+    @apply bg-slate-200 rounded-lg animate-skeleton;
+  }
+
+  /* ── Page typography ── */
+  .page-title {
+    @apply text-2xl font-bold text-slate-900 tracking-tight;
+  }
+  .page-subtitle {
+    @apply mt-1 text-sm text-slate-500;
+  }
+
+  /* ── Gradient text ── */
+  .text-gradient-brand {
+    @apply bg-gradient-to-r from-blue-600 via-blue-500 to-teal-500 bg-clip-text text-transparent;
+  }
+}
+
+/* ─── Utility Layer ──────────────────────────────────────── */
+@layer utilities {
+  .glass {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    background-color: rgba(255, 255, 255, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  .glass-dark {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    background-color: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ─── Loading spinner (keep for compatibility) ──────────── */
+@keyframes spin {
+  to {
     transform: rotate(360deg);
   }
 }
-
 .animate-spin {
-  animation: spin 1s linear infinite;
-}
-
-/* Admin dashboard specific styles */
-.admin-card {
-  background: white;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
-  padding: 1.5rem;
-}
-
-.admin-button-primary {
-  background-color: #2563eb;
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  transition: background-color 0.2s;
-}
-
-.admin-button-primary:hover {
-  background-color: #1d4ed8;
-}
-
-.admin-button-secondary {
-  background-color: #e5e7eb;
-  color: #374151;
-  padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
-  transition: background-color 0.2s;
-}
-
-.admin-button-secondary:hover {
-  background-color: #d1d5db;
-}
-
-.admin-input {
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-}
-
-.admin-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
-}
-
-/* Status badges */
-.status-active {
-  background-color: #dcfce7;
-  color: #166534;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-inactive {
-  background-color: #f3f4f6;
-  color: #1f2937;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-suspended {
-  background-color: #fee2e2;
-  color: #dc2626;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.status-pending {
-  background-color: #fef3c7;
-  color: #d97706;
-  padding: 0.25rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-/* Chart container */
-.chart-container {
-  background: white;
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  border: 1px solid #e5e7eb;
+  animation: spin 0.85s linear infinite;
 }
