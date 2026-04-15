@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Animated as RNAnimated,
 } from "react-native";
+import { useTranslation } from "react-i18next";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -30,11 +31,11 @@ function formatCurrency(amount, currency = "USD") {
   );
 }
 
-function getGreeting() {
+function getGreeting(t) {
   const h = new Date().getHours();
-  if (h < 12) return "Good morning";
-  if (h < 17) return "Good afternoon";
-  return "Good evening";
+  if (h < 12) return t("greeting.morning");
+  if (h < 17) return t("greeting.afternoon");
+  return t("greeting.evening");
 }
 
 // ─── Skeleton Pulse ──────────────────────────────────────────────────────────
@@ -91,6 +92,7 @@ function WalletHeroSkeleton() {
 
 // ─── Wallet Hero Card ────────────────────────────────────────────────────────
 function WalletHeroCard({ walletList, masked, onToggleMask }) {
+  const { t } = useTranslation();
   const primary = walletList[0];
   const total = walletList.reduce(
     (acc, w) => acc + parseFloat(w?.balance || 0),
@@ -129,7 +131,7 @@ function WalletHeroCard({ walletList, masked, onToggleMask }) {
       </View>
 
       {/* Balance */}
-      <Text style={styles.balanceLabel}>TOTAL BALANCE</Text>
+      <Text style={styles.balanceLabel}>{t("home.totalBalance")}</Text>
       <Text style={styles.balanceAmount} numberOfLines={1} adjustsFontSizeToFit>
         {masked ? "• • • • • •" : formatCurrency(total, primary?.currency)}
       </Text>
@@ -139,7 +141,7 @@ function WalletHeroCard({ walletList, masked, onToggleMask }) {
       {/* Stats row */}
       <View style={styles.heroStatsRow}>
         <View>
-          <Text style={styles.heroStatLabel}>Available</Text>
+          <Text style={styles.heroStatLabel}>{t("home.available")}</Text>
           <Text style={styles.heroStatValue}>
             {masked
               ? "•••"
@@ -154,7 +156,7 @@ function WalletHeroCard({ walletList, masked, onToggleMask }) {
           <>
             <View style={styles.heroStatSep} />
             <View>
-              <Text style={styles.heroStatLabel}>Locked</Text>
+              <Text style={styles.heroStatLabel}>{t("home.locked")}</Text>
               <Text style={styles.heroStatValue}>
                 {masked
                   ? "•••"
@@ -168,7 +170,7 @@ function WalletHeroCard({ walletList, masked, onToggleMask }) {
           <>
             <View style={styles.heroStatSep} />
             <View>
-              <Text style={styles.heroStatLabel}>Wallets</Text>
+              <Text style={styles.heroStatLabel}>{t("home.wallets")}</Text>
               <Text style={styles.heroStatValue}>{walletList.length}</Text>
             </View>
           </>
@@ -248,6 +250,7 @@ function TxSkeleton() {
 
 // ─── Dashboard Screen ─────────────────────────────────────────────────────────
 export default function DashboardScreen() {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const router = useRouter();
   const {
@@ -309,7 +312,7 @@ export default function DashboardScreen() {
           style={styles.headerRow}
         >
           <View>
-            <Text style={styles.greetingSub}>{getGreeting()},</Text>
+            <Text style={styles.greetingSub}>{getGreeting(t)},</Text>
             <Text style={styles.greetingName}>{firstName} 👋</Text>
           </View>
           <View style={styles.headerActions}>
@@ -361,7 +364,9 @@ export default function DashboardScreen() {
                 size={34}
                 color="rgba(255,255,255,0.45)"
               />
-              <Text style={styles.heroEmptyText}>No wallet connected</Text>
+              <Text style={styles.heroEmptyText}>
+                {t("home.noWalletConnected")}
+              </Text>
             </View>
           )}
         </Animated.View>
@@ -371,33 +376,33 @@ export default function DashboardScreen() {
           entering={FadeInDown.duration(420).delay(140)}
           style={styles.sectionPad}
         >
-          <SectionHeader title="Quick Actions" />
+          <SectionHeader title={t("home.quickActions")} />
           <View style={styles.actionsRow}>
             <ActionButton
               iconName="paper-plane"
-              label="Send"
+              label={t("home.send")}
               tint="#2563EB"
               onPress={() => router.push("/(tabs)/send")}
             />
             <ActionButton
               iconName="add-circle"
-              label="Deposit"
+              label={t("home.deposit")}
               tint="#059669"
               onPress={() =>
-                Alert.alert("Coming soon", "Deposit feature coming soon")
+                Alert.alert(t("common.comingSoon"), t("home.depositComingSoon"))
               }
             />
             <ActionButton
               iconName="receipt-outline"
-              label="Pay Bills"
+              label={t("home.payBills")}
               tint="#7C3AED"
               onPress={() =>
-                Alert.alert("Coming soon", "Bill payments coming soon")
+                Alert.alert(t("common.comingSoon"), t("home.billsComingSoon"))
               }
             />
             <ActionButton
               iconName="card-outline"
-              label="Cards"
+              label={t("home.cards")}
               tint="#D97706"
               onPress={() => router.push("/(tabs)/cards")}
             />
@@ -410,16 +415,16 @@ export default function DashboardScreen() {
             entering={FadeInDown.duration(420).delay(210)}
             style={styles.sectionPad}
           >
-            <SectionHeader title="This Month" />
+            <SectionHeader title={t("home.recentTransactions")} />
             <View style={styles.statsRow}>
               <StatCard
-                label="Sent"
+                label={t("send.sent")}
                 iconName="arrow-up-circle-outline"
                 iconColor="#EF4444"
                 value={formatCurrency(summary?.totalSent || summary?.sent || 0)}
               />
               <StatCard
-                label="Received"
+                label={t("analytics.income")}
                 iconName="arrow-down-circle-outline"
                 iconColor="#10B981"
                 value={formatCurrency(
@@ -427,7 +432,7 @@ export default function DashboardScreen() {
                 )}
               />
               <StatCard
-                label="Count"
+                label={t("transactions.type")}
                 iconName="swap-horizontal-outline"
                 iconColor="#3B82F6"
                 value={`${summary?.count || summary?.total || 0}`}
@@ -442,8 +447,8 @@ export default function DashboardScreen() {
           style={[styles.sectionPad, { marginBottom: 12 }]}
         >
           <SectionHeader
-            title="Recent Activity"
-            linkText="See all"
+            title={t("home.recentTransactions")}
+            linkText={t("home.seeAll")}
             onLink={() => router.push("/(tabs)/transactions")}
           />
 
@@ -457,9 +462,11 @@ export default function DashboardScreen() {
                   size={38}
                   color="#CBD5E1"
                 />
-                <Text style={styles.emptyTxTitle}>No transactions yet</Text>
+                <Text style={styles.emptyTxTitle}>
+                  {t("home.noTransactionsYet")}
+                </Text>
                 <Text style={styles.emptyTxSub}>
-                  Your recent activity will appear here
+                  {t("home.activityAppear")}
                 </Text>
               </View>
             </View>

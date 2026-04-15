@@ -1,23 +1,7 @@
 import React from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import Badge from "./ui/Badge";
-
-function formatAmount(amount, currency = "USD") {
-  const num = parseFloat(amount || 0);
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(
-    num,
-  );
-}
-
-function formatDate(dateStr) {
-  if (!dateStr) return "";
-  const d = new Date(dateStr);
-  return d.toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
+import { formatCurrency, formatDate } from "../utils/formatters";
 
 const TYPE_ICONS = {
   send: "↗",
@@ -76,7 +60,7 @@ export default function TransactionItem({ transaction, onPress }) {
       <View className="items-end">
         <Text className={`text-sm font-bold ${amountColor}`}>
           {sign}
-          {formatAmount(transaction.amount, transaction.currency)}
+          {formatCurrency(transaction.amount, transaction.currency)}
         </Text>
         <View className="mt-1">
           <Badge

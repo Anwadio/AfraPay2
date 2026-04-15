@@ -26,6 +26,7 @@ const { globalLimiter } = require("./middleware/security/rateLimiter");
 const sanitize = require("./middleware/security/sanitize");
 const requestLogger = require("./middleware/monitoring/requestLogger");
 const responseHandler = require("./middleware/common/responseHandler");
+const { localeMiddleware } = require("./middleware/common/localeMiddleware");
 const {
   metricsCollector,
   createMetricsHandler,
@@ -164,6 +165,9 @@ class AfrPayServer {
 
     // Response helpers
     this.app.use(responseHandler);
+
+    // Locale detection — attach req.locale and req.t() to every request
+    this.app.use(localeMiddleware);
 
     logger.info("Middleware configured successfully");
   }

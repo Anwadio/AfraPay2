@@ -9,6 +9,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { notificationsAPI } from "../../services/api";
+import { useTranslation } from "react-i18next";
+import { timeAgo } from "../../utils/formatters";
 
 import Button from "../../components/ui/Button";
 import {
@@ -16,17 +18,6 @@ import {
   EmptyState,
   ErrorState,
 } from "../../components/ui/States";
-
-function timeAgo(dateStr) {
-  if (!dateStr) return "";
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
-}
 
 const TYPE_ICONS = {
   transaction: "💸",
@@ -38,6 +29,7 @@ const TYPE_ICONS = {
 };
 
 export default function NotificationsScreen() {
+  const { t } = useTranslation();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -49,7 +41,7 @@ export default function NotificationsScreen() {
       const res = await notificationsAPI.getNotifications({ limit: 50 });
       setNotifications(res.data?.data?.notifications || []);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load notifications");
+      setError(err.response?.data?.message || t("notifications.loadFailed"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -72,7 +64,7 @@ export default function NotificationsScreen() {
         prev.map((n) => ({ ...n, read: true, isRead: true })),
       );
     } catch (_err) {
-      Alert.alert("Error", "Could not mark notifications as read");
+      Alert.alert(t("common.error"), t("notifications.markReadFailed"));
     }
   };
 
@@ -94,13 +86,13 @@ export default function NotificationsScreen() {
       await notificationsAPI.deleteNotification(id);
       setNotifications((prev) => prev.filter((n) => (n._id || n.id) !== id));
     } catch {
-      Alert.alert("Error", "Could not delete notification");
+      Alert.alert(t("common.error"), t("notifications.deleteFailed"));
     }
   };
 
   const unreadCount = notifications.filter((n) => !n.read && !n.isRead).length;
 
-  if (loading) return <LoadingState message="Loading notifications..." />;
+  if (loading) return <LoadingState message={t("notifications.loading")} />;
   if (error) return <ErrorState message={error} onRetry={fetchNotifications} />;
 
   return (
@@ -109,17 +101,17 @@ export default function NotificationsScreen() {
       <View className="flex-row items-center justify-between px-5 pt-2 pb-3">
         <View>
           <Text className="text-xl font-bold text-slate-900">
-            Notifications
+            {t("notifications.title")}
           </Text>
           {unreadCount > 0 && (
             <Text className="text-xs text-slate-400 mt-0.5">
-              {unreadCount} unread
+              {t("notifications.unreadCount", { count: unreadCount })}
             </Text>
           )}
         </View>
         {unreadCount > 0 && (
           <Button
-            title="Mark all read"
+            title={t("notifications.markAllRead")}
             onPress={handleMarkAllRead}
             variant="ghost"
             size="sm"
@@ -130,8 +122,8 @@ export default function NotificationsScreen() {
       {notifications.length === 0 ? (
         <EmptyState
           icon="🔔"
-          title="No notifications"
-          message="You're all caught up!"
+          title={t("notifications.empty")}
+          message={t("notifications.emptyMessage")}
         />
       ) : (
         <FlatList
@@ -174,7 +166,7 @@ export default function NotificationsScreen() {
                         className={`text-sm font-semibold flex-1 mr-2 ${isRead ? "text-slate-700" : "text-blue-900"}`}
                         numberOfLines={1}
                       >
-                        {item.title || "Notification"}
+                        {item.title || t("notifications.defaultTitle")}
                       </Text>
                       <Text className="text-xs text-slate-400">
                         {timeAgo(item.createdAt)}

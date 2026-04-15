@@ -14,8 +14,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
+import { useTranslation } from "react-i18next";
 
 function PasswordStrengthBar({ password }) {
+  const { t } = useTranslation();
   const getStrength = (pw) => {
     if (!pw) return 0;
     let s = 0;
@@ -27,7 +29,13 @@ function PasswordStrengthBar({ password }) {
   };
   const strength = getStrength(password);
   const COLORS = ["#e2e8f0", "#ef4444", "#f59e0b", "#2563eb", "#059669"];
-  const LABELS = ["", "Weak", "Fair", "Good", "Strong"];
+  const LABELS = [
+    "",
+    t("auth.passwordWeak"),
+    t("auth.passwordFair"),
+    t("auth.passwordGood"),
+    t("auth.passwordStrong"),
+  ];
   if (!password) return null;
   return (
     <View style={{ marginTop: -8, marginBottom: 14 }}>
@@ -56,6 +64,7 @@ function PasswordStrengthBar({ password }) {
 }
 
 export default function RegisterScreen() {
+  const { t } = useTranslation();
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({
     firstName: "",
@@ -91,27 +100,24 @@ export default function RegisterScreen() {
 
   const validateStep1 = () => {
     const e = {};
-    if (!form.firstName.trim()) e.firstName = "First name is required";
-    if (!form.lastName.trim()) e.lastName = "Last name is required";
-    if (!form.email.trim()) e.email = "Email address is required";
-    else if (!/\S+@\S+\.\S+/.test(form.email))
-      e.email = "Enter a valid email address";
-    if (!form.phone.trim()) e.phone = "Phone number is required";
+    if (!form.firstName.trim()) e.firstName = t("auth.firstNameRequired");
+    if (!form.lastName.trim()) e.lastName = t("auth.lastNameRequired");
+    if (!form.email.trim()) e.email = t("auth.emailRequired");
+    else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = t("auth.emailInvalid");
+    if (!form.phone.trim()) e.phone = t("auth.phoneRequired");
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateStep2 = () => {
     const e = {};
-    if (!form.password) e.password = "Password is required";
-    else if (form.password.length < 8)
-      e.password = "Password must be at least 8 characters";
+    if (!form.password) e.password = t("auth.passwordRequired");
+    else if (form.password.length < 8) e.password = t("auth.passwordMinLength");
     if (!form.confirmPassword)
-      e.confirmPassword = "Please confirm your password";
+      e.confirmPassword = t("auth.confirmPasswordRequired");
     else if (form.password !== form.confirmPassword)
-      e.confirmPassword = "Passwords do not match";
-    if (!form.termsAccepted)
-      e.termsAccepted = "You must accept the Terms of Service to continue";
+      e.confirmPassword = t("auth.passwordsDoNotMatch");
+    if (!form.termsAccepted) e.termsAccepted = t("auth.termsRequired");
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -153,7 +159,7 @@ export default function RegisterScreen() {
       const msg =
         err.response?.data?.error?.message ||
         err.response?.data?.message ||
-        "Registration failed. Please try again.";
+        t("auth.registerFailed");
       setGlobalError(msg);
     } finally {
       setLoading(false);
@@ -238,7 +244,7 @@ export default function RegisterScreen() {
                   marginBottom: 6,
                 }}
               >
-                {step === 1 ? "Create your account" : "Secure your account"}
+                {step === 1 ? t("auth.createAccount") : t("auth.secureAccount")}
               </Text>
               <Text
                 style={{
@@ -247,9 +253,7 @@ export default function RegisterScreen() {
                   textAlign: "center",
                 }}
               >
-                {step === 1
-                  ? "Step 1 of 2 — Personal details"
-                  : "Step 2 of 2 — Set a password"}
+                {step === 1 ? t("auth.step1Label") : t("auth.step2Label")}
               </Text>
 
               {/* Progress dots */}
@@ -339,7 +343,7 @@ export default function RegisterScreen() {
                 <View style={{ flexDirection: "row", gap: 10 }}>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label="First name"
+                      label={t("auth.firstName")}
                       value={form.firstName}
                       onChangeText={set("firstName")}
                       placeholder="John"
@@ -351,7 +355,7 @@ export default function RegisterScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label="Last name"
+                      label={t("auth.lastName")}
                       value={form.lastName}
                       onChangeText={set("lastName")}
                       placeholder="Doe"
@@ -365,7 +369,7 @@ export default function RegisterScreen() {
                 </View>
 
                 <Input
-                  label="Email address"
+                  label={t("auth.emailAddress")}
                   value={form.email}
                   onChangeText={set("email")}
                   placeholder="you@example.com"
@@ -379,7 +383,7 @@ export default function RegisterScreen() {
                 />
 
                 <Input
-                  label="Phone number"
+                  label={t("auth.phone")}
                   value={form.phone}
                   onChangeText={set("phone")}
                   placeholder="+254700000000"
@@ -392,7 +396,7 @@ export default function RegisterScreen() {
                 />
 
                 <Button
-                  title="Continue  →"
+                  title={t("auth.continue")}
                   onPress={handleNext}
                   size="lg"
                   variant="primary"
@@ -403,17 +407,17 @@ export default function RegisterScreen() {
               /* ── STEP 2 ── */
               <>
                 <Input
-                  label="Password"
+                  label={t("auth.password")}
                   value={form.password}
                   onChangeText={set("password")}
-                  placeholder="Min. 8 characters"
+                  placeholder={t("auth.passwordPlaceholder")}
                   secureTextEntry={!showPassword}
                   error={errors.password}
                   leftIcon={<Text style={{ fontSize: 16 }}>🔒</Text>}
                   inputRef={passwordRef}
                   returnKeyType="next"
                   onSubmitEditing={() => confirmRef.current?.focus()}
-                  hint="Mix uppercase, numbers & symbols for a stronger password"
+                  hint={t("auth.passwordHint")}
                   rightElement={
                     <TouchableOpacity
                       onPress={() => setShowPassword((v) => !v)}
@@ -428,10 +432,10 @@ export default function RegisterScreen() {
                 <PasswordStrengthBar password={form.password} />
 
                 <Input
-                  label="Confirm password"
+                  label={t("auth.confirmPassword")}
                   value={form.confirmPassword}
                   onChangeText={set("confirmPassword")}
-                  placeholder="Repeat your password"
+                  placeholder={t("auth.confirmPasswordPlaceholder")}
                   secureTextEntry={!showConfirm}
                   error={errors.confirmPassword}
                   leftIcon={<Text style={{ fontSize: 16 }}>🛡️</Text>}
@@ -468,13 +472,13 @@ export default function RegisterScreen() {
                         fontWeight: "700",
                       }}
                     >
-                      Passwords match
+                      {t("auth.passwordsMatch")}
                     </Text>
                   </View>
                 )}
 
                 <Button
-                  title="Create Account"
+                  title={t("auth.registerButton")}
                   onPress={handleRegister}
                   loading={loading}
                   size="lg"
@@ -528,15 +532,20 @@ export default function RegisterScreen() {
                     )}
                   </View>
                   <Text
-                    style={{ flex: 1, fontSize: 13, color: "#475569", lineHeight: 20 }}
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      color: "#475569",
+                      lineHeight: 20,
+                    }}
                   >
-                    I agree to the{" "}
+                    {t("auth.termsText")}{" "}
                     <Text style={{ color: "#2563eb", fontWeight: "600" }}>
-                      Terms of Service
+                      {t("auth.termsLink")}
                     </Text>{" "}
-                    and{" "}
+                    {t("auth.andText")}{" "}
                     <Text style={{ color: "#2563eb", fontWeight: "600" }}>
-                      Privacy Policy
+                      {t("auth.privacyLink")}
                     </Text>
                   </Text>
                 </TouchableOpacity>
@@ -572,8 +581,12 @@ export default function RegisterScreen() {
                       height: 20,
                       borderRadius: 5,
                       borderWidth: 2,
-                      borderColor: form.marketingAccepted ? "#2563eb" : "#cbd5e1",
-                      backgroundColor: form.marketingAccepted ? "#2563eb" : "#fff",
+                      borderColor: form.marketingAccepted
+                        ? "#2563eb"
+                        : "#cbd5e1",
+                      backgroundColor: form.marketingAccepted
+                        ? "#2563eb"
+                        : "#fff",
                       alignItems: "center",
                       justifyContent: "center",
                       marginTop: 1,
@@ -593,10 +606,17 @@ export default function RegisterScreen() {
                     )}
                   </View>
                   <Text
-                    style={{ flex: 1, fontSize: 13, color: "#475569", lineHeight: 20 }}
+                    style={{
+                      flex: 1,
+                      fontSize: 13,
+                      color: "#475569",
+                      lineHeight: 20,
+                    }}
                   >
-                    Keep me updated with product news and offers{" "}
-                    <Text style={{ color: "#94a3b8" }}>(optional)</Text>
+                    {t("auth.marketingText")}{" "}
+                    <Text style={{ color: "#94a3b8" }}>
+                      ({t("common.optional")})
+                    </Text>
                   </Text>
                 </TouchableOpacity>
               </>
@@ -612,13 +632,13 @@ export default function RegisterScreen() {
               }}
             >
               <Text style={{ color: "#64748b", fontSize: 14 }}>
-                Already have an account?{" "}
+                {t("auth.alreadyHaveAccount")}{" "}
               </Text>
               <TouchableOpacity onPress={() => router.push("/(auth)/login")}>
                 <Text
                   style={{ color: "#2563eb", fontSize: 14, fontWeight: "700" }}
                 >
-                  Sign in
+                  {t("auth.login")}
                 </Text>
               </TouchableOpacity>
             </View>

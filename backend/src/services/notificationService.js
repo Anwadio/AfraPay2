@@ -23,6 +23,7 @@ const { Client, Databases, Users, ID } = require("node-appwrite");
 const axios = require("axios");
 const config = require("../config/environment");
 const logger = require("../utils/logger");
+const { MESSAGES } = require("../middleware/common/localeMiddleware");
 
 // ── Appwrite client ──────────────────────────────────────────────────────────
 const _client = new Client()
@@ -145,5 +146,70 @@ module.exports = {
   createAdminNotification,
   sendPushNotification,
   sendPushToUser,
+  sendLocalizedPushToUser,
   ADMIN_USER_ID,
 };
+
+/**
+ * Send a push notification in the user's preferred language.
+ * Reads the user's stored locale from Appwrite prefs (key: "preferredLocale").
+ * Falls back to English if no preference is stored.
+ *
+ * @param {string} userId
+ * @param {string} messageKey  - key from MESSAGES, e.g. "notification.paymentReceived"
+ * @param {object} [vars]      - interpolation variables, e.g. { amount: "$50", sender: "Alice" }
+ * @param {object} [data]      - extra payload forwarded to the app
+ */
+async function sendLocalizedPushToUser(
+  userId,
+  messageKey,
+  vars = {},
+  data = {},
+) {
+  if (!userId) return;
+  try {
+    const user = await _users.get(userId);
+    const token = user?.prefs?.expoPushToken;
+    const locale = user?.prefs?.preferredLocale || "en";
+    const supported = ["en", "fr"];
+    const resolvedLocale = supported.includes(locale) ? locale : "en";
+
+    // Resolve localised title + body from the message key
+    // Convention: "notification.paymentReceived" → the message itself is the body;
+    // the title uses the first segment ("notification" → generic "AfraPay").
+    const dict = MESSAGES[resolvedLocale] || MESSAGES["en"];
+    let body = dict[messageKey] || MESSAGES["en"][messageKey] || messageKey;
+    Object.entries(vars).forEach(([k, v]) => {
+      body = body.replace(new RegExp(`\\{\\{${k}\\}\\}`, "g"), v);
+    });
+
+    // Derive a short title from the key segment
+    const titleMap = {
+      en: {
+        payment: "Payment",
+        transfer: "Transfer",
+        notification: "AfraPay",
+        auth: "AfraPay",
+      },
+      fr: {
+        payment: "Paiement",
+        transfer: "Transfert",
+        notification: "AfraPay",
+        auth: "AfraPay",
+      },
+    };
+    const segment = messageKey.split(".")[0];
+    const title =
+      (titleMap[resolvedLocale] || titleMap["en"])[segment] || "AfraPay";
+
+    if (token) {
+      await sendPushNotification(token, title, body, data);
+    }
+  } catch (err) {
+    logger.warn("sendLocalizedPushToUser: failed (non-fatal)", {
+      userId,
+      messageKey,
+      error: err.message,
+    });
+  }
+}

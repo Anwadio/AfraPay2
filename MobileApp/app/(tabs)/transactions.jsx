@@ -23,6 +23,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { transactionAPI, walletAPI } from "../../services/api";
 import TransactionItem from "../../components/TransactionItem";
+import { useTranslation } from "react-i18next";
+import { formatCurrency } from "../../utils/formatters";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const LIMIT = 20;
@@ -52,17 +54,6 @@ const DATE_RANGES = [
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function formatCurrency(amount, currency = "USD") {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-    }).format(parseFloat(amount || 0));
-  } catch {
-    return `${currency} ${parseFloat(amount || 0).toFixed(2)}`;
-  }
-}
-
 function dateRangeToParams(value) {
   if (!value) return {};
   const daysMap = { "7d": 7, "30d": 30, "90d": 90, "1y": 365 };
@@ -188,7 +179,31 @@ function TxSkeletons() {
 // ─── TransactionsScreen ───────────────────────────────────────────────────────
 export default function TransactionsScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
 
+  const TYPE_FILTERS = [
+    { label: t("transactions.all") || "All", value: "all" },
+    { label: t("transactions.deposit"), value: "deposit" },
+    { label: t("transactions.transfer"), value: "transfer" },
+    { label: t("transactions.payment"), value: "payment" },
+    { label: t("transactions.withdrawal"), value: "withdrawal" },
+    { label: t("transactions.fee"), value: "fee" },
+  ];
+
+  const STATUS_FILTERS = [
+    { label: t("transactions.allStatuses"), value: "all" },
+    { label: t("transactions.completed"), value: "completed" },
+    { label: t("transactions.pending"), value: "pending" },
+    { label: t("transactions.failed"), value: "failed" },
+  ];
+
+  const DATE_RANGES = [
+    { label: t("transactions.days7"), value: "7d" },
+    { label: t("transactions.days30"), value: "30d" },
+    { label: t("transactions.days90"), value: "90d" },
+    { label: t("transactions.year1"), value: "1y" },
+    { label: t("transactions.allTime"), value: "" },
+  ];
   // ── Filter state ──────────────────────────────────────────────────────────
   const [typeFilter, setTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -335,11 +350,11 @@ export default function TransactionsScreen() {
           style={styles.pageHeader}
         >
           <View>
-            <Text style={styles.pageTitle}>Transactions</Text>
+            <Text style={styles.pageTitle}>{t("transactions.title")}</Text>
             <Text style={styles.pageSubtitle}>
               {totalItems > 0
-                ? `${totalItems} total transactions`
-                : "Your payment history"}
+                ? t("transactions.totalCount", { count: totalItems })
+                : t("transactions.history")}
             </Text>
           </View>
         </Animated.View>
@@ -350,7 +365,7 @@ export default function TransactionsScreen() {
           style={styles.summaryRow}
         >
           <SummaryCard
-            label="Total Balance"
+            label={t("transactions.totalBalance")}
             iconName="wallet-outline"
             iconColor="#2563EB"
             loading={summaryLoading}
@@ -359,7 +374,7 @@ export default function TransactionsScreen() {
             }
           />
           <SummaryCard
-            label="Monthly In"
+            label={t("transactions.monthlyIn")}
             iconName="arrow-down-circle-outline"
             iconColor="#059669"
             loading={summaryLoading}
@@ -368,7 +383,7 @@ export default function TransactionsScreen() {
             )}
           />
           <SummaryCard
-            label="Monthly Out"
+            label={t("transactions.monthlyOut")}
             iconName="arrow-up-circle-outline"
             iconColor="#EF4444"
             loading={summaryLoading}
@@ -392,7 +407,7 @@ export default function TransactionsScreen() {
           <TextInput
             value={searchText}
             onChangeText={setSearchText}
-            placeholder="Search transactions…"
+            placeholder={t("transactions.searchPlaceholder")}
             placeholderTextColor="#94A3B8"
             style={styles.searchInput}
             returnKeyType="search"
@@ -409,7 +424,7 @@ export default function TransactionsScreen() {
 
         {/* ── Type Filter ─────────────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(350).delay(160)}>
-          <Text style={styles.filterGroupLabel}>Type</Text>
+          <Text style={styles.filterGroupLabel}>{t("transactions.type")}</Text>
           <FilterRow
             items={TYPE_FILTERS}
             activeValue={typeFilter}
@@ -420,14 +435,18 @@ export default function TransactionsScreen() {
 
         {/* ── Status + Date Range ─────────────────────────── */}
         <Animated.View entering={FadeInDown.duration(350).delay(200)}>
-          <Text style={styles.filterGroupLabel}>Status</Text>
+          <Text style={styles.filterGroupLabel}>
+            {t("transactions.status")}
+          </Text>
           <FilterRow
             items={STATUS_FILTERS}
             activeValue={statusFilter}
             onSelect={setStatusFilter}
             tint="#059669"
           />
-          <Text style={styles.filterGroupLabel}>Date Range</Text>
+          <Text style={styles.filterGroupLabel}>
+            {t("transactions.dateRange")}
+          </Text>
           <FilterRow
             items={DATE_RANGES}
             activeValue={dateRange}
@@ -443,9 +462,13 @@ export default function TransactionsScreen() {
             style={styles.activeFilterRow}
           >
             <View style={styles.activeFilterDot} />
-            <Text style={styles.activeFilterText}>Filters active</Text>
+            <Text style={styles.activeFilterText}>
+              {t("transactions.filtersActive")}
+            </Text>
             <TouchableOpacity onPress={clearFilters} style={styles.clearBtn}>
-              <Text style={styles.clearBtnText}>Clear all</Text>
+              <Text style={styles.clearBtnText}>
+                {t("transactions.clearAll")}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         )}
@@ -456,7 +479,9 @@ export default function TransactionsScreen() {
           style={styles.txSectionHeader}
         >
           <Text style={styles.txSectionTitle}>
-            {totalItems > 0 ? `${totalItems} Transactions` : "Transactions"}
+            {totalItems > 0
+              ? t("transactions.txCount", { count: totalItems })
+              : t("transactions.title")}
           </Text>
           {loading && transactions.length > 0 && (
             <ActivityIndicator size="small" color="#2563EB" />
@@ -485,7 +510,7 @@ export default function TransactionsScreen() {
       return (
         <View style={styles.emptyWrap}>
           <Ionicons name="cloud-offline-outline" size={44} color="#CBD5E1" />
-          <Text style={styles.emptyTitle}>Something went wrong</Text>
+          <Text style={styles.emptyTitle}>{t("errors.generic")}</Text>
           <Text style={styles.emptySub}>{error}</Text>
           <TouchableOpacity
             style={styles.retryBtn}
@@ -497,7 +522,7 @@ export default function TransactionsScreen() {
               color="#2563EB"
               style={{ marginRight: 6 }}
             />
-            <Text style={styles.retryBtnText}>Try Again</Text>
+            <Text style={styles.retryBtnText}>{t("common.retry")}</Text>
           </TouchableOpacity>
         </View>
       );
@@ -505,11 +530,13 @@ export default function TransactionsScreen() {
     return (
       <View style={styles.emptyWrap}>
         <Ionicons name="document-text-outline" size={44} color="#CBD5E1" />
-        <Text style={styles.emptyTitle}>No transactions found</Text>
+        <Text style={styles.emptyTitle}>
+          {t("transactions.noTransactions")}
+        </Text>
         <Text style={styles.emptySub}>
           {hasActiveFilters
-            ? "Try adjusting your filters"
-            : "Your payment history will appear here"}
+            ? t("transactions.adjustFilters")
+            : t("transactions.noTransactionsDesc")}
         </Text>
         {hasActiveFilters && (
           <TouchableOpacity style={styles.retryBtn} onPress={clearFilters}>
@@ -519,7 +546,9 @@ export default function TransactionsScreen() {
               color="#2563EB"
               style={{ marginRight: 6 }}
             />
-            <Text style={styles.retryBtnText}>Clear Filters</Text>
+            <Text style={styles.retryBtnText}>
+              {t("transactions.clearFilters")}
+            </Text>
           </TouchableOpacity>
         )}
       </View>
@@ -532,7 +561,7 @@ export default function TransactionsScreen() {
     return (
       <View style={styles.loadMoreWrap}>
         <ActivityIndicator size="small" color="#2563EB" />
-        <Text style={styles.loadMoreText}>Loading more…</Text>
+        <Text style={styles.loadMoreText}>{t("transactions.loadingMore")}</Text>
       </View>
     );
   }, [loadingMore]);

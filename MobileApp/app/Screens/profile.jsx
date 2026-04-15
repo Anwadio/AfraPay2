@@ -10,6 +10,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import { userAPI, authAPI } from "../../services/api";
 import Card from "../../components/ui/Card";
 import Input from "../../components/ui/Input";
@@ -17,6 +18,7 @@ import Button from "../../components/ui/Button";
 import { LoadingState } from "../../components/ui/States";
 
 export default function ProfileScreen() {
+  const { t } = useTranslation();
   const { user, refreshUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,7 @@ export default function ProfileScreen() {
         phone: p?.phone || "",
       });
     } catch (_err) {
-      Alert.alert("Error", "Failed to load profile");
+      Alert.alert(t("common.error"), t("profile.loadError"));
     } finally {
       setLoading(false);
     }
@@ -56,11 +58,11 @@ export default function ProfileScreen() {
     try {
       await userAPI.updateProfile(form);
       await refreshUser();
-      Alert.alert("Saved", "Profile updated successfully");
+      Alert.alert(t("common.success"), t("profile.saved"));
     } catch (err1) {
       Alert.alert(
-        "Error",
-        err1.response?.data?.message || "Could not update profile",
+        t("common.error"),
+        err1.response?.data?.message || t("profile.saveError"),
       );
     } finally {
       setSaving(false);
@@ -69,23 +71,23 @@ export default function ProfileScreen() {
 
   const handleChangePassword = async () => {
     const e = {};
-    if (!passwordForm.current) e.current = "Current password is required";
+    if (!passwordForm.current) e.current = t("auth.currentPasswordRequired");
     if (!passwordForm.newPwd || passwordForm.newPwd.length < 8)
-      e.newPwd = "At least 8 characters";
+      e.newPwd = t("auth.newPasswordMinLength");
     if (passwordForm.newPwd !== passwordForm.confirm)
-      e.confirm = "Passwords do not match";
+      e.confirm = t("auth.passwordsDoNotMatch");
     setPwErrors(e);
     if (Object.keys(e).length > 0) return;
 
     setSaving(true);
     try {
       await authAPI.changePassword(passwordForm.current, passwordForm.newPwd);
-      Alert.alert("Success", "Password changed successfully");
+      Alert.alert(t("common.success"), t("auth.passwordChanged"));
       setPasswordForm({ current: "", newPwd: "", confirm: "" });
     } catch (err2) {
       Alert.alert(
-        "Error",
-        err2.response?.data?.message || "Failed to change password",
+        t("common.error"),
+        err2.response?.data?.message || t("auth.passwordChangeFailed"),
       );
     } finally {
       setSaving(false);
@@ -96,7 +98,7 @@ export default function ProfileScreen() {
   const setPw = (key) => (val) =>
     setPasswordForm((p) => ({ ...p, [key]: val }));
 
-  if (loading) return <LoadingState message="Loading profile..." />;
+  if (loading) return <LoadingState message={t("profile.title")} />;
 
   const displayName = profile
     ? `${profile.firstName || ""} ${profile.lastName || ""}`.trim() ||
@@ -130,7 +132,7 @@ export default function ProfileScreen() {
             {profile?.isVerified && (
               <View className="flex-row items-center gap-1 mt-1">
                 <Text className="text-emerald-600 text-xs">
-                  ✓ Verified account
+                  ✓ {t("profile.verifiedAccount")}
                 </Text>
               </View>
             )}
@@ -139,8 +141,8 @@ export default function ProfileScreen() {
           {/* Tab Switcher */}
           <View className="flex-row mx-5 mb-4 p-1 bg-slate-100 rounded-xl">
             {[
-              { key: "profile", label: "Profile" },
-              { key: "security", label: "Security" },
+              { key: "profile", label: t("profile.title") },
+              { key: "security", label: t("profile.security") },
             ].map((tab) => (
               <TouchableOpacity
                 key={tab.key}
@@ -160,37 +162,37 @@ export default function ProfileScreen() {
             {activeSection === "profile" ? (
               <Card>
                 <Text className="text-sm font-bold text-slate-700 mb-4">
-                  Personal Information
+                  {t("profile.title")}
                 </Text>
                 <Input
-                  label="First name"
+                  label={t("auth.firstName")}
                   value={form.firstName}
                   onChangeText={set("firstName")}
                   placeholder="John"
                   autoCapitalize="words"
                 />
                 <Input
-                  label="Last name"
+                  label={t("auth.lastName")}
                   value={form.lastName}
                   onChangeText={set("lastName")}
                   placeholder="Doe"
                   autoCapitalize="words"
                 />
                 <Input
-                  label="Phone number"
+                  label={t("auth.phone")}
                   value={form.phone}
                   onChangeText={set("phone")}
                   placeholder="+254700000000"
                   keyboardType="phone-pad"
                 />
                 <Input
-                  label="Email"
+                  label={t("auth.email")}
                   value={profile?.email || user?.email || ""}
                   editable={false}
                   className="opacity-60"
                 />
                 <Button
-                  title="Save Changes"
+                  title={t("profile.saveProfile")}
                   onPress={handleSaveProfile}
                   loading={saving}
                   className="w-full mt-2"
@@ -199,18 +201,18 @@ export default function ProfileScreen() {
             ) : (
               <Card>
                 <Text className="text-sm font-bold text-slate-700 mb-4">
-                  Change Password
+                  {t("profile.changePassword")}
                 </Text>
                 <Input
-                  label="Current password"
+                  label={t("auth.currentPassword")}
                   value={passwordForm.current}
                   onChangeText={setPw("current")}
                   secureTextEntry
-                  placeholder="Current password"
+                  placeholder={t("auth.currentPassword")}
                   error={pwErrors.current}
                 />
                 <Input
-                  label="New password"
+                  label={t("auth.newPassword")}
                   value={passwordForm.newPwd}
                   onChangeText={setPw("newPwd")}
                   secureTextEntry
@@ -218,15 +220,15 @@ export default function ProfileScreen() {
                   error={pwErrors.newPwd}
                 />
                 <Input
-                  label="Confirm new password"
+                  label={t("auth.confirmPassword")}
                   value={passwordForm.confirm}
                   onChangeText={setPw("confirm")}
                   secureTextEntry
-                  placeholder="Repeat new password"
+                  placeholder={t("auth.confirmPassword")}
                   error={pwErrors.confirm}
                 />
                 <Button
-                  title="Update Password"
+                  title={saving ? t("profile.saving") : t("auth.resetPassword")}
                   onPress={handleChangePassword}
                   loading={saving}
                   className="w-full mt-2"

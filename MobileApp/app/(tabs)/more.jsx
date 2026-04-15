@@ -15,12 +15,14 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../../contexts/AuthContext";
 import {
   walletAPI,
   notificationsAPI,
   subscriptionAPI,
 } from "../../services/api";
+import LanguageSwitcher from "../../components/ui/LanguageSwitcher";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const APP_VERSION = "1.0.0";
@@ -448,6 +450,7 @@ export default function MoreScreen() {
 
   // ── Settings toggles (local pref only — backend write optional) ──────────
   const [notifEnabled, setNotifEnabled] = useState(true);
+  const [langPickerVisible, setLangPickerVisible] = useState(false);
 
   // ── Fetch all data ───────────────────────────────────────────────────────
   const fetchAll = useCallback(async () => {
@@ -500,10 +503,10 @@ export default function MoreScreen() {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(
       () => {},
     );
-    Alert.alert("Sign Out", "Are you sure you want to sign out?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("more.logout"), t("more.logoutConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
-        text: "Sign Out",
+        text: t("more.logout"),
         style: "destructive",
         onPress: async () => {
           await logout();
@@ -534,8 +537,8 @@ export default function MoreScreen() {
           entering={FadeInDown.duration(350).delay(0)}
           style={styles.pageHeader}
         >
-          <Text style={styles.pageTitle}>More</Text>
-          <Text style={styles.pageSubtitle}>Account & settings</Text>
+          <Text style={styles.pageTitle}>{t("more.title")}</Text>
+          <Text style={styles.pageSubtitle}>{t("more.account")}</Text>
         </Animated.View>
 
         {/* ── Profile Card ──────────────────────────────────────── */}
@@ -584,7 +587,7 @@ export default function MoreScreen() {
           entering={FadeInDown.duration(350).delay(330)}
           style={styles.section}
         >
-          <SectionHeader title="Recent Notifications" />
+          <SectionHeader title={t("notifications.title")} />
           <NotificationPreview
             items={recentNotifs}
             onViewAll={() => router.push("/Screens/notifications")}
@@ -596,7 +599,7 @@ export default function MoreScreen() {
           entering={FadeInDown.duration(350).delay(380)}
           style={styles.section}
         >
-          <SectionHeader title="Preferences" />
+          <SectionHeader title={t("settings.language")} />
           <View style={styles.menuCard}>
             <SettingsToggle
               iconName="notifications-outline"
@@ -606,7 +609,30 @@ export default function MoreScreen() {
               value={notifEnabled}
               onChange={(v) => setNotifEnabled(v)}
             />
+            <TouchableOpacity
+              onPress={() => setLangPickerVisible(true)}
+              style={[
+                styles.settingsRow,
+                { borderTopWidth: 1, borderTopColor: "#F1F5F9" },
+              ]}
+              activeOpacity={0.75}
+            >
+              <View
+                style={[styles.menuIconWrap, { backgroundColor: "#DBEAFE" }]}
+              >
+                <Ionicons name="language-outline" size={18} color="#2563EB" />
+              </View>
+              <View style={{ flex: 1, marginLeft: 12 }}>
+                <Text style={styles.menuLabel}>{t("settings.language")}</Text>
+                <Text style={styles.menuDesc}>{t("more.languageDesc")}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={15} color="#CBD5E1" />
+            </TouchableOpacity>
           </View>
+          <LanguageSwitcher
+            visible={langPickerVisible}
+            onClose={() => setLangPickerVisible(false)}
+          />
         </Animated.View>
 
         {/* ── Sign Out ──────────────────────────────────────────── */}
@@ -622,7 +648,7 @@ export default function MoreScreen() {
             <View style={styles.signOutIconWrap}>
               <Ionicons name="log-out-outline" size={19} color="#EF4444" />
             </View>
-            <Text style={styles.signOutText}>Sign Out</Text>
+            <Text style={styles.signOutText}>{t("more.logout")}</Text>
             <Ionicons name="chevron-forward" size={15} color="#FCA5A5" />
           </TouchableOpacity>
         </Animated.View>
@@ -635,7 +661,9 @@ export default function MoreScreen() {
           <View style={styles.footerLogoWrap}>
             <Text style={styles.footerLogo}>AfraPay</Text>
           </View>
-          <Text style={styles.footerVersion}>Version {APP_VERSION}</Text>
+          <Text style={styles.footerVersion}>
+            {t("more.version")} {APP_VERSION}
+          </Text>
           <Text style={styles.footerCopy}>
             © 2026 AfraPay · All rights reserved
           </Text>

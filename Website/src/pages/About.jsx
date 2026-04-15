@@ -6,17 +6,17 @@ import { SCHEMA_ABOUT } from "../components/seo/schemas";
 const About = () => {
   const team = [
     {
-      name: "Kwame Asante",
+      name: "Amou",
       role: "CEO & Co-founder",
       image: "/api/placeholder/150/150",
       bio: "Former Goldman Sachs VP with 12+ years in fintech. Passionate about financial inclusion across Africa.",
       linkedin: "#",
     },
     {
-      name: "Amina Hassan",
+      name: "Anthony",
       role: "CTO & Co-founder",
       image: "/api/placeholder/150/150",
-      bio: "Ex-Google engineer specializing in secure payment systems. Led engineering teams at Stripe and Square.",
+      bio: "Anthony Wai is a systems-driven CTO and founder building long-term, scalable technology infrastructure across Africa. He specializes in full-stack development and AI-integrated commerce, leading the creation of NileVerse Group—a multi-layered ecosystem that includes Nile Flow (AI-powered commerce), Nile Pay (fintech infrastructure), and Nile Learn (edtech platform). His work is centered on designing high-leverage systems that drive economic empowerment, behavioral engagement, and digital transformation, with a clear focus on generational wealth, continental scale, and faith-aligned leadership.",
       linkedin: "#",
     },
     {

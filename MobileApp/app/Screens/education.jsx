@@ -9,10 +9,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { educationAPI } from "../../services/api";
+import { useTranslation } from "react-i18next";
 import Card from "../../components/ui/Card";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
-import { LoadingState, EmptyState, ErrorState } from "../../components/ui/States";
+import {
+  LoadingState,
+  EmptyState,
+  ErrorState,
+} from "../../components/ui/States";
 
 const LEVEL_COLORS = {
   beginner: "success",
@@ -21,6 +26,7 @@ const LEVEL_COLORS = {
 };
 
 function ContentCard({ item, enrollments, onEnroll, enrollingId }) {
+  const { t } = useTranslation();
   const enrolled = enrollments.find(
     (e) => (e.contentId || e.content?._id) === (item._id || item.id),
   );
@@ -76,7 +82,9 @@ function ContentCard({ item, enrollments, onEnroll, enrollingId }) {
         <View className="mb-3">
           <View className="flex-row justify-between mb-1">
             <Text className="text-xs text-slate-500">
-              {completed ? "Completed ✓" : `Progress: ${progress}%`}
+              {completed
+                ? t("education.completed")
+                : t("education.progressPct", { pct: progress })}
             </Text>
           </View>
           <View className="h-1.5 bg-slate-100 rounded-full">
@@ -91,7 +99,11 @@ function ContentCard({ item, enrollments, onEnroll, enrollingId }) {
       {/* Action */}
       <Button
         title={
-          completed ? "✓ Completed" : enrolled ? "Continue" : "Enroll Free"
+          completed
+            ? t("education.completedBtn")
+            : enrolled
+              ? t("education.continueBtn")
+              : t("education.enrollFree")
         }
         onPress={() => !completed && onEnroll(item._id || item.id)}
         loading={enrollingId === (item._id || item.id)}
@@ -105,6 +117,7 @@ function ContentCard({ item, enrollments, onEnroll, enrollingId }) {
 }
 
 export default function EducationScreen() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState([]);
   const [content, setContent] = useState([]);
   const [featured, setFeatured] = useState([]);
@@ -137,9 +150,7 @@ export default function EducationScreen() {
       setFeatured(featRes.data?.content || featRes.data || []);
       setEnrollments(enrollRes.data?.enrollments || enrollRes.data || []);
     } catch (err) {
-      setError(
-        err.response?.data?.message || "Failed to load education content",
-      );
+      setError(err.response?.data?.message || t("education.loadFailed"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -161,21 +172,24 @@ export default function EducationScreen() {
       await educationAPI.enrollInContent(contentId);
       const enrollRes = await educationAPI.getEnrollments();
       setEnrollments(enrollRes.data?.enrollments || enrollRes.data || []);
-      Alert.alert(
-        "Enrolled!",
-        "You have been successfully enrolled in this course.",
-      );
+      Alert.alert(t("education.enrolledTitle"), t("education.enrolledMessage"));
     } catch (err) {
-      Alert.alert("Error", err.response?.data?.message || "Failed to enroll");
+      Alert.alert(
+        t("common.error"),
+        err.response?.data?.message || t("education.enrollFailed"),
+      );
     } finally {
       setEnrollingId(null);
     }
   };
 
-  if (loading) return <LoadingState message="Loading courses..." />;
+  if (loading) return <LoadingState message={t("education.loading")} />;
   if (error) return <ErrorState message={error} onRetry={fetchData} />;
 
-  const allCategories = [{ _id: "all", name: "All" }, ...categories];
+  const allCategories = [
+    { _id: "all", name: t("education.allLabel") },
+    ...categories,
+  ];
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50">
@@ -192,10 +206,10 @@ export default function EducationScreen() {
         {/* Header */}
         <View className="px-5 pt-4 pb-2">
           <Text className="text-xl font-bold text-slate-900">
-            Education Hub
+            {t("education.title")}
           </Text>
           <Text className="text-slate-400 text-sm mt-0.5">
-            Learn financial literacy & grow
+            {t("education.subtitle")}
           </Text>
         </View>
 
@@ -211,7 +225,7 @@ export default function EducationScreen() {
                 }}
               >
                 <Text style={{ color: "rgba(255,255,255,0.8)", fontSize: 12 }}>
-                  My Learning
+                  {t("education.myLearning")}
                 </Text>
                 <View className="flex-row items-center gap-6 mt-2">
                   <View>
@@ -227,7 +241,7 @@ export default function EducationScreen() {
                     <Text
                       style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}
                     >
-                      Enrolled
+                      {t("education.enrolledLabel")}
                     </Text>
                   </View>
                   <View>
@@ -246,7 +260,7 @@ export default function EducationScreen() {
                     <Text
                       style={{ color: "rgba(255,255,255,0.7)", fontSize: 12 }}
                     >
-                      Completed
+                      {t("education.completedLabel")}
                     </Text>
                   </View>
                 </View>
@@ -284,7 +298,7 @@ export default function EducationScreen() {
         {featured.length > 0 && activeCategory === "all" && (
           <View className="mb-4">
             <Text className="text-sm font-semibold text-slate-700 px-5 mb-3">
-              ⭐ Featured
+              ⭐ {t("education.featured")}
             </Text>
             <ScrollView
               horizontal
@@ -320,7 +334,7 @@ export default function EducationScreen() {
                     {item.description}
                   </Text>
                   <Button
-                    title="Enroll"
+                    title={t("education.enroll")}
                     onPress={() => handleEnroll(item._id || item.id)}
                     loading={enrollingId === (item._id || item.id)}
                     size="sm"
@@ -335,7 +349,7 @@ export default function EducationScreen() {
         <View className="px-5">
           <Text className="text-sm font-semibold text-slate-700 mb-3">
             {activeCategory === "all"
-              ? "All Courses"
+              ? t("education.allCourses")
               : allCategories.find((c) => c._id === activeCategory)?.name}
             <Text className="text-slate-400 font-normal">
               {" "}
@@ -346,8 +360,8 @@ export default function EducationScreen() {
           {content.length === 0 ? (
             <EmptyState
               icon="📚"
-              title="No content found"
-              message="Try a different category"
+              title={t("education.noContent")}
+              message={t("education.noContentMessage")}
             />
           ) : (
             content.map((item) => (

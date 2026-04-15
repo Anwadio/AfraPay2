@@ -25,6 +25,7 @@ import Animated, {
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { cardAPI, walletAPI } from "../../services/api";
+import { useTranslation } from "react-i18next";
 
 // â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CARD_COLORS = [
@@ -48,32 +49,7 @@ const FUND_CURRENCIES = [
 ];
 const CARD_TYPES = ["virtual", "physical"];
 
-const CARD_BENEFITS = [
-  {
-    iconName: "shield-checkmark-outline",
-    tint: "#3B82F6",
-    title: "Zero-liability Protection",
-    desc: "You're never responsible for unauthorized charges.",
-  },
-  {
-    iconName: "wifi-outline",
-    tint: "#0D9488",
-    title: "Contactless Payments",
-    desc: "Tap to pay anywhere in 180+ countries.",
-  },
-  {
-    iconName: "lock-closed-outline",
-    tint: "#7C3AED",
-    title: "Instant Freeze & Unfreeze",
-    desc: "Lock your card in seconds if it goes missing.",
-  },
-  {
-    iconName: "notifications-outline",
-    tint: "#D97706",
-    title: "Real-time Alerts",
-    desc: "Get notified instantly for every transaction.",
-  },
-];
+// CARD_BENEFITS is defined inside CardBenefits() to use translations
 
 const EMPTY_FORM = {
   cardNumber: "",
@@ -213,6 +189,7 @@ function AnimatedCard({ children, onPress, style }) {
 
 // â”€â”€â”€ CardFace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CardFace({ card, onPress }) {
+  const { t } = useTranslation();
   const frozen = card.status === "frozen";
   return (
     <AnimatedCard onPress={onPress} style={styles.cardShadow}>
@@ -237,7 +214,7 @@ function CardFace({ card, onPress }) {
               ]}
             >
               <Text style={styles.statusPillText}>
-                {frozen ? "Frozen" : "Active"}
+                {frozen ? t("cards.frozen") : t("cards.active")}
               </Text>
             </View>
           </View>
@@ -282,15 +259,15 @@ function CardFace({ card, onPress }) {
         {/* Bottom row */}
         <View style={styles.cardBottomRow}>
           <View>
-            <Text style={styles.cardFieldLabel}>CARD HOLDER</Text>
+            <Text style={styles.cardFieldLabel}>{t("cards.cardHolder")}</Text>
             <Text style={styles.cardFieldValue}>{card.holder}</Text>
           </View>
           <View style={{ alignItems: "center" }}>
-            <Text style={styles.cardFieldLabel}>EXPIRES</Text>
+            <Text style={styles.cardFieldLabel}>{t("cards.expires")}</Text>
             <Text style={styles.cardFieldValue}>{card.expiry}</Text>
           </View>
           <View style={{ alignItems: "flex-end" }}>
-            <Text style={styles.cardFieldLabel}>TYPE</Text>
+            <Text style={styles.cardFieldLabel}>{t("cards.type")}</Text>
             <Text style={styles.cardFieldValue}>{card.type}</Text>
           </View>
         </View>
@@ -305,7 +282,7 @@ function CardFace({ card, onPress }) {
                 color="#fff"
                 style={{ marginRight: 6 }}
               />
-              <Text style={styles.frozenPillText}>Card Frozen</Text>
+              <Text style={styles.frozenPillText}>{t("cards.cardFrozen")}</Text>
             </View>
           </View>
         )}
@@ -323,34 +300,39 @@ function CardFace({ card, onPress }) {
 
 // â”€â”€â”€ DetailsPanel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function DetailsPanel({ card }) {
+  const { t } = useTranslation();
   return (
     <View style={styles.detailsPanel}>
       <View style={styles.detailsGrid}>
         <View style={styles.detailCell}>
-          <Text style={styles.detailCellLabel}>CARD NUMBER</Text>
+          <Text style={styles.detailCellLabel}>
+            {t("cards.cardNumberLabel")}
+          </Text>
           <Text style={styles.detailCellValue}>
             â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ {card.last4}
           </Text>
         </View>
         <View style={styles.detailCell}>
-          <Text style={styles.detailCellLabel}>EXPIRY</Text>
+          <Text style={styles.detailCellLabel}>{t("cards.expiryLabel")}</Text>
           <Text style={styles.detailCellValue}>{card.expiry}</Text>
         </View>
         <View style={styles.detailCell}>
-          <Text style={styles.detailCellLabel}>CARD HOLDER</Text>
+          <Text style={styles.detailCellLabel}>
+            {t("cards.cardHolderLabel")}
+          </Text>
           <Text style={[styles.detailCellValue, { flex: 1 }]} numberOfLines={1}>
             {card.holder}
           </Text>
         </View>
         <View style={styles.detailCell}>
-          <Text style={styles.detailCellLabel}>NETWORK / TYPE</Text>
+          <Text style={styles.detailCellLabel}>{t("cards.networkType")}</Text>
           <Text style={styles.detailCellValue}>
             {card.network} Â· {card.type}
           </Text>
         </View>
       </View>
       <View style={{ marginTop: 8 }}>
-        <Text style={styles.detailCellLabel}>CARD ID</Text>
+        <Text style={styles.detailCellLabel}>{t("cards.cardId")}</Text>
         <Text
           style={[styles.detailCellValue, { fontSize: 11, color: "#94A3B8" }]}
           numberOfLines={1}
@@ -403,6 +385,7 @@ function CardItem({
   onToggleFreeze,
   onFundWallet,
 }) {
+  const { t } = useTranslation();
   const frozen = card.status === "frozen";
   return (
     <View style={styles.cardItemWrap}>
@@ -415,34 +398,34 @@ function CardItem({
       <View style={styles.actionRow}>
         <ActionBtn
           iconName={revealed ? "eye-off-outline" : "eye-outline"}
-          label={revealed ? "Hide" : "Details"}
+          label={revealed ? t("cards.hide") : t("cards.details")}
           tint="#2563EB"
           onPress={onToggleReveal}
         />
         <ActionBtn
           iconName={frozen ? "lock-open-outline" : "lock-closed-outline"}
-          label={frozen ? "Unfreeze" : "Freeze"}
+          label={frozen ? t("cards.unfreeze") : t("cards.freeze")}
           tint={frozen ? "#D97706" : "#475569"}
           onPress={() => onToggleFreeze(card)}
         />
         {!card.isDefault && (
           <ActionBtn
             iconName="star-outline"
-            label="Default"
+            label={t("cards.default")}
             tint="#CA8A04"
             onPress={() => onSetDefault(card.id)}
           />
         )}
         <ActionBtn
           iconName="wallet-outline"
-          label="Fund"
+          label={t("cards.fund")}
           tint="#059669"
           disabled={frozen}
           onPress={() => onFundWallet(card)}
         />
         <ActionBtn
           iconName="trash-outline"
-          label="Remove"
+          label={t("cards.remove")}
           tint="#EF4444"
           onPress={() => onDelete(card.id)}
         />
@@ -517,6 +500,7 @@ function ColorPicker({ selected, onSelect }) {
 
 // â”€â”€â”€ AddCardModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AddCardModal({ visible, onClose, onAdded }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -527,16 +511,15 @@ function AddCardModal({ visible, onClose, onAdded }) {
     const e = {};
     const digits = form.cardNumber.replace(/\s/g, "");
     if (!digits || digits.length < 13)
-      e.cardNumber = "Enter a valid 13-19 digit card number";
-    if (!form.holderName.trim()) e.holderName = "Cardholder name is required";
+      e.cardNumber = t("cards.invalidCardNumber");
+    if (!form.holderName.trim()) e.holderName = t("cards.cardholderRequired");
     const mo = parseInt(form.expiryMonth, 10);
-    if (!mo || mo < 1 || mo > 12) e.expiryMonth = "Month must be 01â€“12";
+    if (!mo || mo < 1 || mo > 12) e.expiryMonth = t("cards.invalidMonth");
     const yr = parseInt(form.expiryYear, 10);
     const nowYr = new Date().getFullYear();
     if (!yr || yr < nowYr || yr > nowYr + 20)
-      e.expiryYear = `Enter ${nowYr}â€“${nowYr + 20}`;
-    if (!form.cvv || !/^\d{3,4}$/.test(form.cvv))
-      e.cvv = "CVV must be 3 or 4 digits";
+      e.expiryYear = t("cards.invalidYear", { min: nowYr, max: nowYr + 20 });
+    if (!form.cvv || !/^\d{3,4}$/.test(form.cvv)) e.cvv = t("cards.invalidCvv");
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -566,8 +549,8 @@ function AddCardModal({ visible, onClose, onAdded }) {
       onClose();
     } catch (err) {
       Alert.alert(
-        "Card not added",
-        err.response?.data?.message || "Check your card details and try again.",
+        t("cards.addCardFailed"),
+        err.response?.data?.message || t("cards.checkDetails"),
       );
     } finally {
       setLoading(false);
@@ -596,7 +579,7 @@ function AddCardModal({ visible, onClose, onAdded }) {
               <View style={styles.modalIconWrap}>
                 <Ionicons name="card-outline" size={20} color="#2563EB" />
               </View>
-              <Text style={styles.modalTitle}>Add New Card</Text>
+              <Text style={styles.modalTitle}>{t("cards.addNewCard")}</Text>
               <TouchableOpacity onPress={onClose} style={styles.modalClose}>
                 <Ionicons name="close" size={20} color="#64748B" />
               </TouchableOpacity>
@@ -606,7 +589,9 @@ function AddCardModal({ visible, onClose, onAdded }) {
             <View style={[styles.previewCard, { backgroundColor: form.color }]}>
               <View style={styles.blobTopRight} />
               <View style={styles.blobBottomLeft} />
-              <Text style={styles.cardLabel}>{form.label || "My Card"}</Text>
+              <Text style={styles.cardLabel}>
+                {form.label || t("cards.myCard")}
+              </Text>
               <Text
                 style={[styles.cardNumber, { marginTop: 18, marginBottom: 16 }]}
               >
@@ -620,7 +605,10 @@ function AddCardModal({ visible, onClose, onAdded }) {
             </View>
 
             {/* Form fields */}
-            <FormField label="Card Number" error={errors.cardNumber}>
+            <FormField
+              label={t("cards.cardNumberField")}
+              error={errors.cardNumber}
+            >
               <StyledInput
                 value={form.cardNumber}
                 onChangeText={(t) => setF("cardNumber")(formatCardInput(t))}
@@ -631,11 +619,14 @@ function AddCardModal({ visible, onClose, onAdded }) {
               />
             </FormField>
 
-            <FormField label="Cardholder Name" error={errors.holderName}>
+            <FormField
+              label={t("cards.cardholderName")}
+              error={errors.holderName}
+            >
               <StyledInput
                 value={form.holderName}
                 onChangeText={setF("holderName")}
-                placeholder="John Doe"
+                placeholder={t("cards.cardholderPlaceholder")}
                 autoCapitalize="words"
                 error={errors.holderName}
               />
@@ -643,7 +634,10 @@ function AddCardModal({ visible, onClose, onAdded }) {
 
             <View style={{ flexDirection: "row", gap: 10 }}>
               <View style={{ flex: 1 }}>
-                <FormField label="Exp. Month" error={errors.expiryMonth}>
+                <FormField
+                  label={t("cards.expiryMonth")}
+                  error={errors.expiryMonth}
+                >
                   <StyledInput
                     value={form.expiryMonth}
                     onChangeText={setF("expiryMonth")}
@@ -655,7 +649,10 @@ function AddCardModal({ visible, onClose, onAdded }) {
                 </FormField>
               </View>
               <View style={{ flex: 1.2 }}>
-                <FormField label="Exp. Year" error={errors.expiryYear}>
+                <FormField
+                  label={t("cards.expiryYear")}
+                  error={errors.expiryYear}
+                >
                   <StyledInput
                     value={form.expiryYear}
                     onChangeText={setF("expiryYear")}
@@ -681,19 +678,19 @@ function AddCardModal({ visible, onClose, onAdded }) {
               </View>
             </View>
 
-            <FormField label="Label (optional)">
+            <FormField label={t("cards.labelOptional")}>
               <StyledInput
                 value={form.label}
                 onChangeText={setF("label")}
-                placeholder="e.g. Travel Card"
+                placeholder={t("cards.labelPlaceholder")}
               />
             </FormField>
 
             {/* Card type */}
             <View style={styles.formField}>
-              <Text style={styles.formLabel}>Card Type</Text>
+              <Text style={styles.formLabel}>{t("cards.cardType")}</Text>
               <View style={{ flexDirection: "row", gap: 10 }}>
-                {CARD_TYPES.map((t) => (
+                {CARD_TYPES.map((cardType) => (
                   <TouchableOpacity
                     key={t}
                     onPress={() => {
@@ -704,16 +701,16 @@ function AddCardModal({ visible, onClose, onAdded }) {
                     }}
                     style={[
                       styles.typeChip,
-                      form.cardType === t && styles.typeChipActive,
+                      form.cardType === cardType && styles.typeChipActive,
                     ]}
                   >
                     <Text
                       style={[
                         styles.typeChipText,
-                        form.cardType === t && styles.typeChipTextActive,
+                        form.cardType === cardType && styles.typeChipTextActive,
                       ]}
                     >
-                      {t.charAt(0).toUpperCase() + t.slice(1)}
+                      {cardType.charAt(0).toUpperCase() + cardType.slice(1)}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -722,7 +719,7 @@ function AddCardModal({ visible, onClose, onAdded }) {
 
             {/* Color */}
             <View style={styles.formField}>
-              <Text style={styles.formLabel}>Card Color</Text>
+              <Text style={styles.formLabel}>{t("cards.cardColor")}</Text>
               <ColorPicker selected={form.color} onSelect={setF("color")} />
             </View>
 
@@ -736,7 +733,7 @@ function AddCardModal({ visible, onClose, onAdded }) {
               {loading ? (
                 <ActivityIndicator size="small" color="#fff" />
               ) : (
-                <Text style={styles.submitBtnText}>Add Card</Text>
+                <Text style={styles.submitBtnText}>{t("cards.addCard")}</Text>
               )}
             </TouchableOpacity>
           </ScrollView>
@@ -748,6 +745,7 @@ function AddCardModal({ visible, onClose, onAdded }) {
 
 // â”€â”€â”€ FundWalletModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
+  const { t } = useTranslation();
   const idempotencyKey = useRef(uuidv4());
   const [cardId, setCardId] = useState(preselectedCard?.id || "");
   const [amount, setAmount] = useState("");
@@ -770,9 +768,9 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
 
   const handleSubmit = async () => {
     const parsed = parseFloat(amount);
-    if (!cardId) return setError("Please select a card.");
-    if (!parsed || parsed < 1) return setError("Minimum amount is 1.");
-    if (parsed > 1_000_000) return setError("Maximum amount is 1,000,000.");
+    if (!cardId) return setError(t("cards.selectCardError"));
+    if (!parsed || parsed < 1) return setError(t("cards.minAmount"));
+    if (parsed > 1_000_000) return setError(t("cards.maxAmount"));
     setError(null);
     setLoading(true);
     try {
@@ -794,9 +792,7 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
       );
     } catch (err) {
       setError(
-        err?.response?.data?.message ||
-          err?.message ||
-          "Charge failed. Please try again.",
+        err?.response?.data?.message || err?.message || t("cards.chargeFailed"),
       );
     } finally {
       setLoading(false);
@@ -827,7 +823,7 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
               >
                 <Ionicons name="wallet-outline" size={20} color="#059669" />
               </View>
-              <Text style={styles.modalTitle}>Fund Wallet</Text>
+              <Text style={styles.modalTitle}>{t("cards.fundWallet")}</Text>
               <TouchableOpacity
                 onPress={() => !loading && onClose()}
                 style={styles.modalClose}
@@ -842,7 +838,9 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
                 <View style={styles.successIconWrap}>
                   <Ionicons name="checkmark-circle" size={52} color="#059669" />
                 </View>
-                <Text style={styles.successTitle}>Wallet Funded!</Text>
+                <Text style={styles.successTitle}>
+                  {t("cards.walletFunded")}
+                </Text>
                 <Text style={styles.successAmount}>
                   {success.currency}{" "}
                   {parseFloat(success.amount).toLocaleString("en-US", {
@@ -861,19 +859,19 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
                     { backgroundColor: "#059669", marginTop: 24 },
                   ]}
                 >
-                  <Text style={styles.submitBtnText}>Done</Text>
+                  <Text style={styles.submitBtnText}>{t("common.done")}</Text>
                 </TouchableOpacity>
               </View>
             ) : (
               <>
                 {/* Card selector */}
                 <View style={styles.formField}>
-                  <Text style={styles.formLabel}>Select Card</Text>
+                  <Text style={styles.formLabel}>{t("cards.selectCard")}</Text>
                   {activeCards.length === 0 ? (
                     <Text
                       style={{ fontSize: 13, color: "#94A3B8", marginTop: 6 }}
                     >
-                      No active cards available.
+                      {t("cards.noActiveCards")}
                     </Text>
                   ) : (
                     <View style={{ gap: 8 }}>
@@ -923,15 +921,15 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
 
                 {/* Amount */}
                 <FormField
-                  label="Amount"
+                  label={t("cards.amount")}
                   error={error && error.includes("amount") ? error : undefined}
                 >
                   <View style={styles.amountRow}>
                     <TextInput
                       value={amount}
-                      onChangeText={(t) => {
+                      onChangeText={(val) => {
                         setError(null);
-                        setAmount(t.replace(/[^0-9.]/g, ""));
+                        setAmount(val.replace(/[^0-9.]/g, ""));
                       }}
                       placeholder="0.00"
                       placeholderTextColor="#94A3B8"
@@ -946,7 +944,7 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
 
                 {/* Currency */}
                 <View style={styles.formField}>
-                  <Text style={styles.formLabel}>Currency</Text>
+                  <Text style={styles.formLabel}>{t("cards.currency")}</Text>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -1005,7 +1003,7 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
                     <Text style={styles.submitBtnText}>
-                      Charge Card & Fund Wallet
+                      {t("cards.chargeCard")}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -1020,22 +1018,49 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
 
 // â”€â”€â”€ CardBenefits â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CardBenefits() {
+  const { t } = useTranslation();
+  const CARD_BENEFITS = [
+    {
+      iconName: "shield-checkmark-outline",
+      tint: "#3B82F6",
+      titleKey: "cards.benefitProtectionTitle",
+      descKey: "cards.benefitProtectionDesc",
+    },
+    {
+      iconName: "wifi-outline",
+      tint: "#0D9488",
+      titleKey: "cards.benefitContactlessTitle",
+      descKey: "cards.benefitContactlessDesc",
+    },
+    {
+      iconName: "lock-closed-outline",
+      tint: "#7C3AED",
+      titleKey: "cards.benefitFreezeTitle",
+      descKey: "cards.benefitFreezeDesc",
+    },
+    {
+      iconName: "notifications-outline",
+      tint: "#D97706",
+      titleKey: "cards.benefitAlertsTitle",
+      descKey: "cards.benefitAlertsDesc",
+    },
+  ];
   return (
     <Animated.View
       entering={FadeInDown.duration(350).delay(160)}
       style={styles.benefitsWrap}
     >
-      <Text style={styles.benefitsTitle}>Card Benefits</Text>
+      <Text style={styles.benefitsTitle}>{t("cards.cardBenefits")}</Text>
       <View style={styles.benefitsGrid}>
         {CARD_BENEFITS.map((b) => (
-          <View key={b.title} style={styles.benefitCard}>
+          <View key={b.titleKey} style={styles.benefitCard}>
             <View
               style={[styles.benefitIcon, { backgroundColor: b.tint + "18" }]}
             >
               <Ionicons name={b.iconName} size={18} color={b.tint} />
             </View>
-            <Text style={styles.benefitTitle}>{b.title}</Text>
-            <Text style={styles.benefitDesc}>{b.desc}</Text>
+            <Text style={styles.benefitTitle}>{t(b.titleKey)}</Text>
+            <Text style={styles.benefitDesc}>{t(b.descKey)}</Text>
           </View>
         ))}
       </View>
@@ -1045,6 +1070,7 @@ function CardBenefits() {
 
 // â”€â”€â”€ CardsScreen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function CardsScreen() {
+  const { t } = useTranslation();
   const [cards, setCards] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1063,7 +1089,7 @@ export default function CardsScreen() {
       const arr = Array.isArray(payload) ? payload : (payload?.cards ?? []);
       setCards(arr.map((c, i) => mapApiCard(c, i)));
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load cards");
+      setError(err.response?.data?.message || t("cards.loadFailed"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -1094,16 +1120,16 @@ export default function CardsScreen() {
       setCards((prev) => prev.map((c) => ({ ...c, isDefault: c.id === id })));
     } catch (err) {
       Alert.alert(
-        "Error",
-        err.response?.data?.message || "Failed to set default card",
+        t("common.error"),
+        err.response?.data?.message || t("cards.setDefaultFailed"),
       );
     }
   };
 
   const handleDelete = (id) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
-    Alert.alert("Remove Card", "Are you sure you want to remove this card?", [
-      { text: "Cancel", style: "cancel" },
+    Alert.alert(t("cards.removeCard"), t("cards.removeConfirm"), [
+      { text: t("common.cancel"), style: "cancel" },
       {
         text: "Remove",
         style: "destructive",
@@ -1117,8 +1143,8 @@ export default function CardsScreen() {
             ).catch(() => {});
           } catch (err) {
             Alert.alert(
-              "Error",
-              err.response?.data?.message || "Failed to remove card",
+              t("common.error"),
+              err.response?.data?.message || t("cards.removeFailed"),
             );
           }
         },
@@ -1136,8 +1162,8 @@ export default function CardsScreen() {
       );
     } catch (err) {
       Alert.alert(
-        "Error",
-        err.response?.data?.message || "Failed to update card status",
+        t("common.error"),
+        err.response?.data?.message || t("cards.freezeFailed"),
       );
     }
   };
@@ -1165,7 +1191,7 @@ export default function CardsScreen() {
       <SafeAreaView style={styles.screen} edges={["top"]}>
         <View style={styles.errorWrap}>
           <Ionicons name="cloud-offline-outline" size={48} color="#CBD5E1" />
-          <Text style={styles.errorTitle}>Something went wrong</Text>
+          <Text style={styles.errorTitle}>{t("cards.errorTitle")}</Text>
           <Text style={styles.errorSub}>{error}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={fetchCards}>
             <Ionicons
@@ -1174,7 +1200,7 @@ export default function CardsScreen() {
               color="#2563EB"
               style={{ marginRight: 6 }}
             />
-            <Text style={styles.retryBtnText}>Try Again</Text>
+            <Text style={styles.retryBtnText}>{t("cards.tryAgain")}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -1201,9 +1227,12 @@ export default function CardsScreen() {
           style={styles.pageHeader}
         >
           <View>
-            <Text style={styles.pageTitle}>My Cards</Text>
+            <Text style={styles.pageTitle}>{t("cards.myCards")}</Text>
             <Text style={styles.pageSubtitle}>
-              {cards.length} {cards.length === 1 ? "card" : "cards"} saved
+              {cards.length}{" "}
+              {cards.length === 1
+                ? t("cards.cardSingular")
+                : t("cards.cardPlural")}
             </Text>
           </View>
           <TouchableOpacity
@@ -1222,7 +1251,7 @@ export default function CardsScreen() {
               color="#fff"
               style={{ marginRight: 4 }}
             />
-            <Text style={styles.addBtnText}>Add Card</Text>
+            <Text style={styles.addBtnText}>{t("cards.addCard")}</Text>
           </TouchableOpacity>
         </Animated.View>
 
@@ -1235,10 +1264,8 @@ export default function CardsScreen() {
             <View style={styles.emptyIconWrap}>
               <Ionicons name="card-outline" size={36} color="#94A3B8" />
             </View>
-            <Text style={styles.emptyTitle}>No cards yet</Text>
-            <Text style={styles.emptySub}>
-              Add a card to make faster payments worldwide
-            </Text>
+            <Text style={styles.emptyTitle}>{t("cards.noCards")}</Text>
+            <Text style={styles.emptySub}>{t("cards.noCardsDesc")}</Text>
             <TouchableOpacity
               onPress={() => setShowAdd(true)}
               style={[styles.submitBtn, { marginTop: 20 }]}
@@ -1249,7 +1276,9 @@ export default function CardsScreen() {
                 color="#fff"
                 style={{ marginRight: 6 }}
               />
-              <Text style={styles.submitBtnText}>Add Your First Card</Text>
+              <Text style={styles.submitBtnText}>
+                {t("cards.addFirstCard")}
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         ) : (

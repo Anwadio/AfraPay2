@@ -1,5 +1,6 @@
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { STORAGE_KEY } from "../i18n";
 
 // Configure base URL — update for production or use env variable
 const BASE_URL =
@@ -11,11 +12,19 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Attach JWT token from storage on every request
+// Attach JWT token and Accept-Language header on every request
 api.interceptors.request.use(
   async (config) => {
-    const token = await AsyncStorage.getItem("accessToken");
+    const [tokenEntry, langEntry] = await AsyncStorage.multiGet([
+      "accessToken",
+      STORAGE_KEY,
+    ]);
+    const token = tokenEntry[1];
+    const lang = langEntry[1] || "en";
     if (token) config.headers.Authorization = `Bearer ${token}`;
+    // Tell the backend which language the user has selected
+    config.headers["Accept-Language"] = lang;
+    config.headers["X-App-Language"] = lang;
     return config;
   },
   (error) => Promise.reject(error),

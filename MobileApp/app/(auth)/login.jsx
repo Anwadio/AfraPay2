@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import { useAuth } from "../../contexts/AuthContext";
+import { useTranslation } from "react-i18next";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 
@@ -35,6 +36,7 @@ const FACEBOOK_DISCOVERY = {
 };
 
 export default function LoginScreen() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -125,12 +127,10 @@ export default function LoginScreen() {
 
   const validate = () => {
     const e = {};
-    if (!email.trim()) e.email = "Email address is required";
-    else if (!/\S+@\S+\.\S+/.test(email))
-      e.email = "Enter a valid email address";
-    if (!password) e.password = "Password is required";
-    else if (password.length < 8)
-      e.password = "Password must be at least 8 characters";
+    if (!email.trim()) e.email = t("auth.emailRequired");
+    else if (!/\S+@\S+\.\S+/.test(email)) e.email = t("auth.emailInvalid");
+    if (!password) e.password = t("auth.passwordRequired");
+    else if (password.length < 8) e.password = t("auth.passwordMinLength");
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -144,15 +144,13 @@ export default function LoginScreen() {
       router.replace("/(tabs)");
     } catch (err) {
       if (err.response?.data?.error?.code === "EMAIL_NOT_VERIFIED") {
-        setGlobalError(
-          "Please verify your email before signing in. Check your inbox for the verification link.",
-        );
+        setGlobalError(t("auth.verifyEmail"));
         return;
       }
       const msg =
         err.response?.data?.error?.message ||
         err.response?.data?.message ||
-        "Unable to sign in. Please check your credentials.";
+        t("auth.signInFailed");
       setGlobalError(msg);
     } finally {
       setLoading(false);
@@ -249,7 +247,7 @@ export default function LoginScreen() {
                   marginBottom: 8,
                 }}
               >
-                Welcome back
+                {t("auth.welcomeBack")}
               </Text>
               <Text
                 style={{
@@ -258,7 +256,7 @@ export default function LoginScreen() {
                   textAlign: "center",
                 }}
               >
-                Sign in to continue to AfraPay
+                {t("auth.signInSubtitle")}
               </Text>
             </View>
           </SafeAreaView>
@@ -352,7 +350,7 @@ export default function LoginScreen() {
 
             {/* Email */}
             <Input
-              label="Email address"
+              label={t("auth.emailAddress")}
               value={email}
               onChangeText={(v) => {
                 setEmail(v);
@@ -370,14 +368,14 @@ export default function LoginScreen() {
 
             {/* Password */}
             <Input
-              label="Password"
+              label={t("auth.password")}
               value={password}
               onChangeText={(v) => {
                 setPassword(v);
                 if (errors.password) setErrors((p) => ({ ...p, password: "" }));
                 if (globalError) setGlobalError("");
               }}
-              placeholder="Enter your password"
+              placeholder={t("auth.password")}
               secureTextEntry={!showPassword}
               error={errors.password}
               leftIcon={<Text style={{ fontSize: 16 }}>🔒</Text>}
@@ -408,12 +406,12 @@ export default function LoginScreen() {
               <Text
                 style={{ color: "#2563eb", fontSize: 13, fontWeight: "600" }}
               >
-                Forgot password?
+                {t("auth.forgotPassword")}
               </Text>
             </TouchableOpacity>
 
             <Button
-              title="Sign In"
+              title={loading ? t("auth.signingIn") : t("auth.loginButton")}
               onPress={handleLogin}
               loading={loading}
               size="lg"
@@ -440,7 +438,7 @@ export default function LoginScreen() {
                   flexShrink: 0,
                 }}
               >
-                or continue with
+                {t("auth.or")}
               </Text>
               <View
                 style={{ flex: 1, height: 1, backgroundColor: "#e2e8f0" }}
@@ -548,12 +546,12 @@ export default function LoginScreen() {
             {/* Register link */}
             <View style={{ alignItems: "center", marginTop: 28 }}>
               <Text style={{ fontSize: 14, color: "#64748b" }}>
-                Don't have an account?{" "}
+                {t("auth.dontHaveAccount")}{" "}
                 <Text
                   onPress={() => router.push("/(auth)/register")}
                   style={{ color: "#2563eb", fontWeight: "700" }}
                 >
-                  Sign up free
+                  {t("auth.signUpFree") || "Sign up free"}
                 </Text>
               </Text>
             </View>

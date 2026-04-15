@@ -16,10 +16,12 @@ import { useRouter } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
+import { useTranslation } from "react-i18next";
 import { paymentAPI, walletAPI } from "../../services/api";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import Badge from "../../components/ui/Badge";
+import { formatCurrency, timeAgo } from "../../utils/formatters";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STEPS = {
@@ -121,37 +123,6 @@ function uuidv4() {
     const r = (Math.random() * 16) | 0;
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
   });
-}
-
-function formatCurrency(amount, currency = "USD") {
-  try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency,
-    }).format(parseFloat(amount || 0));
-  } catch {
-    return `${currency} ${parseFloat(amount || 0).toFixed(2)}`;
-  }
-}
-
-function formatRelDate(iso) {
-  if (!iso) return "";
-  try {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 1) return "Just now";
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    if (days < 7) return `${days}d ago`;
-    return new Date(iso).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  } catch {
-    return "";
-  }
 }
 
 function maskRecipient(str, inputType) {
@@ -316,7 +287,7 @@ function RecentTransferItem({ transfer, onQuickFill }) {
         </Text>
         <Text style={styles.txMeta}>
           {providerCfg?.label || transfer.provider} ·{" "}
-          {formatRelDate(transfer.createdAt)}
+          {timeAgo(transfer.createdAt)}
         </Text>
       </View>
       <View style={{ alignItems: "flex-end" }}>
@@ -333,6 +304,7 @@ function RecentTransferItem({ transfer, onQuickFill }) {
 // ─── SendMoneyScreen ──────────────────────────────────────────────────────────
 export default function SendMoneyScreen() {
   const router = useRouter();
+  const { t } = useTranslation();
   const idempotencyKey = useRef(uuidv4());
 
   const [step, setStep] = useState(STEPS.FORM);
@@ -392,17 +364,17 @@ export default function SendMoneyScreen() {
     const e = {};
     const parsed = parseFloat(amount);
     if (!amount || isNaN(parsed) || parsed <= 0)
-      e.amount = "Enter a valid amount";
+      e.amount = t("send.invalidAmount");
 
     if (isStripeProvider(provider)) {
       if (!accountNumber.trim() || !accountNumber.trim().startsWith("acct_"))
-        e.account = "Enter a valid Stripe account ID (starts with acct_)";
+        e.account = t("send.invalidStripeAccount");
     } else if (isBankProvider(provider)) {
-      if (!accountNumber.trim()) e.account = "Account number is required";
-      if (!bankCode.trim()) e.bankCode = "Bank code is required";
+      if (!accountNumber.trim()) e.account = t("send.accountRequired");
+      if (!bankCode.trim()) e.bankCode = t("send.bankCodeRequired");
     } else {
-      if (!phone.trim()) e.phone = "Recipient phone number is required";
-      else if (phone.trim().length < 7) e.phone = "Enter a valid phone number";
+      if (!phone.trim()) e.phone = t("send.phoneRequired");
+      else if (phone.trim().length < 7) e.phone = t("send.invalidPhone");
     }
 
     setErrors(e);
@@ -447,7 +419,7 @@ export default function SendMoneyScreen() {
       const msg =
         err.response?.data?.message ||
         err.response?.data?.error ||
-        "Transfer failed. Please try again.";
+        t("send.transferFailed");
       setResult({ success: false, error: msg });
     }
     setStep(STEPS.RESULT);
@@ -501,9 +473,9 @@ export default function SendMoneyScreen() {
     return (
       <SafeAreaView style={[styles.screen, styles.centered]}>
         <ActivityIndicator size="large" color="#2563EB" />
-        <Text style={styles.processingTitle}>Sending your transfer…</Text>
+        <Text style={styles.processingTitle}>{t("send.processingTitle")}</Text>
         <Text style={styles.processingSubtitle}>
-          This usually takes a few seconds
+          {t("send.processingSubtitle")}
         </Text>
       </SafeAreaView>
     );
@@ -526,23 +498,31 @@ export default function SendMoneyScreen() {
               >
                 <Ionicons name="checkmark-circle" size={48} color="#059669" />
               </View>
-              <Text style={styles.resultTitle}>Transfer Sent!</Text>
+              <Text style={styles.resultTitle}>{t("send.transferSent")}</Text>
               <Text style={styles.resultSubtitle}>
-                {formatCurrency(amount, currency)} sent via{" "}
-                {selectedProvider.label}
+                {t("send.transferSentSubtitle", {
+                  amount: formatCurrency(amount, currency),
+                  provider: selectedProvider.label,
+                })}
               </Text>
               {result.data?.transaction?.id && (
                 <View style={styles.resultRefWrap}>
-                  <Text style={styles.resultRefLabel}>Transaction ID</Text>
+                  <Text style={styles.resultRefLabel}>
+                    {t("send.transactionId")}
+                  </Text>
                   <Text style={styles.resultRef}>
                     {result.data.transaction.id}
                   </Text>
                 </View>
               )}
               <View style={{ width: "100%", gap: 10, marginTop: 24 }}>
-                <Button title="Send Again" onPress={handleReset} size="lg" />
                 <Button
-                  title="View Transactions"
+                  title={t("send.sendAgain")}
+                  onPress={handleReset}
+                  size="lg"
+                />
+                <Button
+                  title={t("send.viewTransactions")}
                   variant="outline"
                   onPress={() => {
                     handleReset();
@@ -559,10 +539,14 @@ export default function SendMoneyScreen() {
               >
                 <Ionicons name="close-circle" size={48} color="#EF4444" />
               </View>
-              <Text style={styles.resultTitle}>Transfer Failed</Text>
+              <Text style={styles.resultTitle}>{t("send.transferFailed")}</Text>
               <Text style={styles.resultSubtitle}>{result?.error}</Text>
               <View style={{ width: "100%", gap: 10, marginTop: 24 }}>
-                <Button title="Try Again" onPress={handleReset} size="lg" />
+                <Button
+                  title={t("send.tryAgain")}
+                  onPress={handleReset}
+                  size="lg"
+                />
               </View>
             </>
           )}
@@ -595,8 +579,10 @@ export default function SendMoneyScreen() {
                 <Ionicons name="arrow-back" size={22} color="#2563EB" />
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
-                <Text style={styles.pageTitle}>Confirm Transfer</Text>
-                <Text style={styles.pageSubtitle}>Review before sending</Text>
+                <Text style={styles.pageTitle}>{t("send.confirmTitle")}</Text>
+                <Text style={styles.pageSubtitle}>
+                  {t("send.confirmSubtitle")}
+                </Text>
               </View>
             </View>
 
@@ -632,29 +618,45 @@ export default function SendMoneyScreen() {
                   {formatCurrency(amount, currency)}
                 </Text>
                 <Text style={styles.confirmTo}>
-                  to {recipientDisplay || "—"}
+                  {t("send.confirmTo", { recipient: recipientDisplay || "—" })}
                 </Text>
               </View>
 
               {/* Review rows */}
               <View style={styles.reviewCard}>
-                <ReviewRow label="Provider" value={selectedProvider.label} />
                 <ReviewRow
-                  label="Amount"
+                  label={t("send.reviewProvider")}
+                  value={selectedProvider.label}
+                />
+                <ReviewRow
+                  label={t("send.reviewAmount")}
                   value={formatCurrency(amount, currency)}
                   valueColor="#2563EB"
                 />
-                <ReviewRow label="Recipient" value={recipientDisplay || "—"} />
+                <ReviewRow
+                  label={t("send.reviewRecipient")}
+                  value={recipientDisplay || "—"}
+                />
                 {isBankProvider(provider) && bankCode && (
-                  <ReviewRow label="Bank Code" value={bankCode} />
+                  <ReviewRow
+                    label={t("send.reviewBankCode")}
+                    value={bankCode}
+                  />
                 )}
                 {isBankProvider(provider) && accountName && (
-                  <ReviewRow label="Account Name" value={accountName} />
+                  <ReviewRow
+                    label={t("send.reviewAccountName")}
+                    value={accountName}
+                  />
                 )}
                 {description.trim() && (
-                  <ReviewRow label="Note" value={description} />
+                  <ReviewRow label={t("send.reviewNote")} value={description} />
                 )}
-                <ReviewRow label="Fee" value="Free" valueColor="#059669" />
+                <ReviewRow
+                  label={t("send.reviewFee")}
+                  value={t("send.free")}
+                  valueColor="#059669"
+                />
               </View>
 
               {/* Warning */}
@@ -666,15 +668,18 @@ export default function SendMoneyScreen() {
                   style={{ marginTop: 1 }}
                 />
                 <Text style={styles.warningText}>
-                  Transfers cannot be reversed once sent. Please verify
-                  recipient details carefully.
+                  {t("send.irreversibleWarning")}
                 </Text>
               </View>
 
               <View style={{ gap: 10, marginTop: 8 }}>
-                <Button title="Send Now" onPress={handleSend} size="lg" />
                 <Button
-                  title="Go Back"
+                  title={t("send.sendNow")}
+                  onPress={handleSend}
+                  size="lg"
+                />
+                <Button
+                  title={t("send.goBack")}
                   variant="outline"
                   onPress={() => setStep(STEPS.FORM)}
                   size="lg"
@@ -707,10 +712,8 @@ export default function SendMoneyScreen() {
             style={styles.header}
           >
             <View>
-              <Text style={styles.pageTitle}>Send Money</Text>
-              <Text style={styles.pageSubtitle}>
-                Transfer to anyone, anywhere
-              </Text>
+              <Text style={styles.pageTitle}>{t("send.title")}</Text>
+              <Text style={styles.pageSubtitle}>{t("send.subtitle")}</Text>
             </View>
           </Animated.View>
 
@@ -725,7 +728,7 @@ export default function SendMoneyScreen() {
               <View style={styles.balanceChip}>
                 <Ionicons name="wallet-outline" size={15} color="#2563EB" />
                 <Text style={styles.balanceChipText}>
-                  Available:{" "}
+                  {t("send.available")}:{" "}
                   <Text style={{ fontWeight: "700", color: "#0F172A" }}>
                     {formatCurrency(walletBalance, currency)}
                   </Text>
@@ -739,7 +742,7 @@ export default function SendMoneyScreen() {
             entering={FadeInDown.duration(380).delay(60)}
             style={styles.sectionPad}
           >
-            <Text style={styles.sectionLabel}>Send via</Text>
+            <Text style={styles.sectionLabel}>{t("send.sendVia")}</Text>
             <View style={styles.providerGrid}>
               {PROVIDERS.map((p) => (
                 <ProviderCard
@@ -757,7 +760,7 @@ export default function SendMoneyScreen() {
             entering={FadeInDown.duration(380).delay(120)}
             style={styles.sectionPad}
           >
-            <Text style={styles.sectionLabel}>Amount</Text>
+            <Text style={styles.sectionLabel}>{t("send.amount")}</Text>
             <Input
               value={amount}
               onChangeText={(v) => {
@@ -770,7 +773,7 @@ export default function SendMoneyScreen() {
               error={errors.amount}
             />
             <Text style={[styles.sectionLabel, { marginTop: 4 }]}>
-              Currency
+              {t("send.currency")}
             </Text>
             <ScrollView
               horizontal
@@ -796,7 +799,9 @@ export default function SendMoneyScreen() {
           >
             {isStripeProvider(provider) ? (
               <>
-                <Text style={styles.sectionLabel}>Stripe Account ID</Text>
+                <Text style={styles.sectionLabel}>
+                  {t("send.stripeAccountId")}
+                </Text>
                 <Input
                   value={accountNumber}
                   onChangeText={(v) => {
@@ -810,7 +815,9 @@ export default function SendMoneyScreen() {
               </>
             ) : isBankProvider(provider) ? (
               <>
-                <Text style={styles.sectionLabel}>Account Number</Text>
+                <Text style={styles.sectionLabel}>
+                  {t("send.accountNumber")}
+                </Text>
                 <Input
                   value={accountNumber}
                   onChangeText={(v) => {
@@ -821,7 +828,7 @@ export default function SendMoneyScreen() {
                   keyboardType="numeric"
                   error={errors.account}
                 />
-                <Text style={styles.sectionLabel}>Bank Code</Text>
+                <Text style={styles.sectionLabel}>{t("send.bankCode")}</Text>
                 <Input
                   value={bankCode}
                   onChangeText={(v) => {
@@ -832,17 +839,21 @@ export default function SendMoneyScreen() {
                   keyboardType="numeric"
                   error={errors.bankCode}
                 />
-                <Text style={styles.sectionLabel}>Account Name (optional)</Text>
+                <Text style={styles.sectionLabel}>
+                  {t("send.accountNameOptional")}
+                </Text>
                 <Input
                   value={accountName}
                   onChangeText={setAccountName}
-                  placeholder="e.g. John Doe"
+                  placeholder={t("send.accountNamePlaceholder")}
                   autoCapitalize="words"
                 />
               </>
             ) : (
               <>
-                <Text style={styles.sectionLabel}>Recipient Phone Number</Text>
+                <Text style={styles.sectionLabel}>
+                  {t("send.recipientPhone")}
+                </Text>
                 <Input
                   value={phone}
                   onChangeText={(v) => {
@@ -856,11 +867,13 @@ export default function SendMoneyScreen() {
               </>
             )}
 
-            <Text style={styles.sectionLabel}>Description (optional)</Text>
+            <Text style={styles.sectionLabel}>
+              {t("send.descriptionOptional")}
+            </Text>
             <Input
               value={description}
               onChangeText={setDescription}
-              placeholder="e.g. Rent payment"
+              placeholder={t("send.descriptionPlaceholder")}
               autoCapitalize="sentences"
             />
           </Animated.View>
@@ -871,7 +884,7 @@ export default function SendMoneyScreen() {
             style={styles.sectionPad}
           >
             <Button
-              title="Review Transfer"
+              title={t("send.reviewTransfer")}
               onPress={handleReview}
               size="lg"
               icon={<Ionicons name="arrow-forward" size={18} color="#fff" />}
@@ -885,11 +898,13 @@ export default function SendMoneyScreen() {
               style={[styles.sectionPad, { marginBottom: 12 }]}
             >
               <View style={styles.sectionHeaderRow}>
-                <Text style={styles.sectionTitle}>Recent Transfers</Text>
+                <Text style={styles.sectionTitle}>
+                  {t("send.recentTransfers")}
+                </Text>
                 <TouchableOpacity
                   onPress={() => router.push("/(tabs)/transactions")}
                 >
-                  <Text style={styles.sectionLink}>See all</Text>
+                  <Text style={styles.sectionLink}>{t("common.seeAll")}</Text>
                 </TouchableOpacity>
               </View>
 

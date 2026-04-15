@@ -8,14 +8,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { analyticsAPI, transactionAPI } from "../../services/api";
+import { useTranslation } from "react-i18next";
+import { formatCurrency } from "../../utils/formatters";
 import Card from "../../components/ui/Card";
 import { LoadingState, ErrorState } from "../../components/ui/States";
-
-function formatCurrency(amount, currency = "USD") {
-  return new Intl.NumberFormat("en-US", { style: "currency", currency }).format(
-    parseFloat(amount || 0),
-  );
-}
 
 function KPICard({
   icon,
@@ -25,6 +21,7 @@ function KPICard({
   color = "text-blue-600",
   bgColor = "bg-blue-50",
 }) {
+  const { t } = useTranslation();
   const isPositive = parseFloat(change) >= 0;
   return (
     <Card className="flex-1 mx-1">
@@ -49,7 +46,9 @@ function KPICard({
           >
             {isPositive ? "▲" : "▼"} {Math.abs(parseFloat(change)).toFixed(1)}%
           </Text>
-          <Text className="text-xs text-slate-400 ml-1">vs last period</Text>
+          <Text className="text-xs text-slate-400 ml-1">
+            {t("analytics.vsLastPeriod")}
+          </Text>
         </View>
       )}
     </Card>
@@ -120,6 +119,7 @@ function toApiPeriod(uiPeriod) {
 }
 
 export default function AnalyticsScreen() {
+  const { t } = useTranslation();
   const [dashboard, setDashboard] = useState(null);
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -138,7 +138,7 @@ export default function AnalyticsScreen() {
       setDashboard(dashRes.data?.analytics || dashRes.data || {});
       setSummary(sumRes.data?.summary || sumRes.data || {});
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load analytics");
+      setError(err.response?.data?.message || t("analytics.loadFailed"));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -154,7 +154,7 @@ export default function AnalyticsScreen() {
     fetchData();
   };
 
-  if (loading) return <LoadingState message="Loading analytics..." />;
+  if (loading) return <LoadingState message={t("analytics.loading")} />;
   if (error) return <ErrorState message={error} onRetry={fetchData} />;
 
   const kpis = dashboard?.kpis || {};
@@ -176,9 +176,11 @@ export default function AnalyticsScreen() {
       >
         {/* Header */}
         <View className="px-5 pt-4 pb-2">
-          <Text className="text-xl font-bold text-slate-900">Analytics</Text>
+          <Text className="text-xl font-bold text-slate-900">
+            {t("analytics.title")}
+          </Text>
           <Text className="text-slate-400 text-sm mt-0.5">
-            Your financial insights
+            {t("analytics.subtitle")}
           </Text>
         </View>
 
@@ -208,7 +210,7 @@ export default function AnalyticsScreen() {
           <View className="flex-row mb-3">
             <KPICard
               icon="💸"
-              label="Total Sent"
+              label={t("analytics.totalSent")}
               value={formatCurrency(kpis.totalSent || summary?.totalSent || 0)}
               change={kpis.sentChange}
               color="text-red-500"
@@ -216,7 +218,7 @@ export default function AnalyticsScreen() {
             />
             <KPICard
               icon="⬇"
-              label="Total Received"
+              label={t("analytics.totalReceived")}
               value={formatCurrency(
                 kpis.totalReceived || summary?.totalReceived || 0,
               )}
@@ -228,7 +230,7 @@ export default function AnalyticsScreen() {
           <View className="flex-row">
             <KPICard
               icon="📊"
-              label="Transactions"
+              label={t("analytics.transactions")}
               value={String(kpis.count || summary?.count || 0)}
               change={kpis.countChange}
               color="text-blue-600"
@@ -236,7 +238,7 @@ export default function AnalyticsScreen() {
             />
             <KPICard
               icon="💰"
-              label="Net Balance"
+              label={t("analytics.netBalance")}
               value={formatCurrency(
                 parseFloat(kpis.totalReceived || summary?.totalReceived || 0) -
                   parseFloat(kpis.totalSent || summary?.totalSent || 0),
@@ -252,10 +254,10 @@ export default function AnalyticsScreen() {
           <View className="px-5 mb-4">
             <Card>
               <Text className="text-sm font-bold text-slate-800 mb-1">
-                Spending Trend
+                {t("analytics.spendingTrend")}
               </Text>
               <Text className="text-xs text-slate-400 mb-2">
-                Transaction volume over time
+                {t("analytics.volumeOverTime")}
               </Text>
               <SimpleBarChart
                 data={trends}
@@ -280,7 +282,7 @@ export default function AnalyticsScreen() {
           <View className="px-5 mb-4">
             <Card>
               <Text className="text-sm font-bold text-slate-800 mb-4">
-                By Category
+                {t("analytics.byCategory")}
               </Text>
               {categories.slice(0, 6).map((cat, i) => {
                 const total =
@@ -303,7 +305,9 @@ export default function AnalyticsScreen() {
                   <View key={cat._id || cat.name || i} className="mb-3">
                     <View className="flex-row justify-between mb-1">
                       <Text className="text-sm text-slate-700 font-medium">
-                        {cat.name || cat._id || `Category ${i + 1}`}
+                        {cat.name ||
+                          cat._id ||
+                          t("analytics.categoryFallback", { n: i + 1 })}
                       </Text>
                       <Text className="text-sm font-bold text-slate-800">
                         {formatCurrency(cat.amount || cat.total || 0)}
@@ -335,7 +339,7 @@ export default function AnalyticsScreen() {
           <View className="px-5 mb-4">
             <Card>
               <Text className="text-sm font-bold text-slate-800 mb-3">
-                Top Recipients
+                {t("analytics.topRecipients")}
               </Text>
               {topRecipients.slice(0, 5).map((r, i) => (
                 <View key={r._id || i} className="flex-row items-center mb-3">
@@ -349,10 +353,10 @@ export default function AnalyticsScreen() {
                       className="text-sm font-medium text-slate-800"
                       numberOfLines={1}
                     >
-                      {r.name || r.email || "Unknown"}
+                      {r.name || r.email || t("common.unknown")}
                     </Text>
                     <Text className="text-xs text-slate-400">
-                      {r.count} transactions
+                      {t("analytics.transactionCount", { count: r.count })}
                     </Text>
                   </View>
                   <Text className="text-sm font-bold text-blue-600">
@@ -368,7 +372,7 @@ export default function AnalyticsScreen() {
         {dashboard?.insights?.length > 0 && (
           <View className="px-5 mb-4">
             <Text className="text-sm font-semibold text-slate-700 mb-3">
-              💡 Insights
+              💡 {t("analytics.insights")}
             </Text>
             {dashboard.insights.map((insight, i) => (
               <View

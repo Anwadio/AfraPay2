@@ -14,10 +14,7 @@
 export function extractAuthPayload(axiosResponse) {
   const payload = axiosResponse?.data?.data || {};
   const jwt =
-    payload.tokens?.accessToken ||
-    payload.token ||
-    payload.accessToken ||
-    null;
+    payload.tokens?.accessToken || payload.token || payload.accessToken || null;
   const user = payload.user || null;
   return { jwt, user, raw: payload };
 }

@@ -32,6 +32,7 @@ import LanguageDetector from "i18next-browser-languagedetector";
 // fall back to English. Eager bundling ensures every locale is available the
 // instant i18next initialises.
 import enTranslations from "./en.json";
+import frTranslations from "./fr.json";
 import swTranslations from "./sw.json";
 import arJubaTranslations from "./ar-juba.json";
 
@@ -40,7 +41,7 @@ import arJubaTranslations from "./ar-juba.json";
 export const STORAGE_KEY = "afrapay_lang";
 
 /** All locale codes the app supports. */
-export const SUPPORTED_LANGUAGES = ["en", "sw", "ar-juba"];
+export const SUPPORTED_LANGUAGES = ["en", "fr", "sw", "ar-juba"];
 
 /**
  * Locale codes that require an RTL layout.
@@ -59,6 +60,13 @@ export const LANGUAGE_META = {
     nativeName: "English",
     englishName: "English",
     flag: "🇬🇧",
+    dir: "ltr",
+  },
+  fr: {
+    code: "fr",
+    nativeName: "Français",
+    englishName: "French",
+    flag: "🇫🇷",
     dir: "ltr",
   },
   sw: {
@@ -114,13 +122,14 @@ i18n
     // immediately on page load without waiting for an async chunk.
     resources: {
       en: { translation: enTranslations },
+      fr: { translation: frTranslations },
       sw: { translation: swTranslations },
       "ar-juba": { translation: arJubaTranslations },
     },
 
     // The browser language detector reads, in order:
     //   1. localStorage ("afrapay_lang")
-    //   2. navigator.language
+    //   2. navigator.language (fr-FR → fr is auto-matched)
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],
       lookupLocalStorage: STORAGE_KEY,
@@ -158,7 +167,9 @@ i18n
 const applyDirection = (lang) => {
   const dir = RTL_LANGUAGES.includes(lang) ? "rtl" : "ltr";
   document.documentElement.dir = dir;
-  document.documentElement.lang = lang === "ar-juba" ? "ar" : lang;
+  // Map internal locale codes to BCP-47 language tags for the html[lang] attribute
+  const langTagMap = { "ar-juba": "ar", sw: "sw", fr: "fr", en: "en" };
+  document.documentElement.lang = langTagMap[lang] ?? lang;
 };
 
 i18n.on("languageChanged", (lang) => {
