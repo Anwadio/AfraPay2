@@ -29,8 +29,12 @@ function normalizeOriginList(value) {
 function getDefaultCorsOrigins(env) {
   const defaults = [
     "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+    "http://localhost:3003",
     "https://www.afrapayafrica.com",
     "https://afrapayafrica.com",
+    "https://admin.afrapayafrica.com",
   ];
 
   if (env.APP_URL) {

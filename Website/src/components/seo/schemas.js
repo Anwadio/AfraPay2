@@ -299,7 +299,7 @@ export const SCHEMA_CAREERS = {
       "@type": "JobPosting",
       title: "Senior Backend Engineer",
       description:
-        "Build and scale the payment infrastructure that serves millions of South Sudanese users.",
+        "Build and scale the payment infrastructure that serves millions of African users.",
       hiringOrganization: { "@id": `${SITE_BASE_URL}/#organization` },
       jobLocation: {
         "@type": "Place",

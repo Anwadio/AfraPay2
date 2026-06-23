@@ -143,19 +143,35 @@ export default function ProfileScreen() {
             {[
               { key: "profile", label: t("profile.title") },
               { key: "security", label: t("profile.security") },
-            ].map((tab) => (
-              <TouchableOpacity
-                key={tab.key}
-                onPress={() => setActiveSection(tab.key)}
-                className={`flex-1 py-2.5 rounded-lg items-center ${activeSection === tab.key ? "bg-white shadow-sm" : ""}`}
-              >
-                <Text
-                  className={`text-sm font-semibold ${activeSection === tab.key ? "text-slate-900" : "text-slate-400"}`}
+            ].map((tab) => {
+              const isActive = activeSection === tab.key;
+              return (
+                <TouchableOpacity
+                  key={tab.key}
+                  onPress={() => setActiveSection(tab.key)}
+                  className="flex-1 py-2.5 rounded-lg items-center"
+                  style={
+                    isActive
+                      ? {
+                          backgroundColor: "white",
+                          elevation: 1,
+                          shadowColor: "#000",
+                          shadowOffset: { width: 0, height: 1 },
+                          shadowOpacity: 0.05,
+                          shadowRadius: 1,
+                        }
+                      : undefined
+                  }
                 >
-                  {tab.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    className="text-sm font-semibold"
+                    style={{ color: isActive ? "#0f172a" : "#94a3b8" }}
+                  >
+                    {tab.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <View className="px-5">

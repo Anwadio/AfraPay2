@@ -231,7 +231,7 @@ const Blog = () => {
             </h1>
             <p className="text-lg md:text-xl text-neutral-200 max-w-xl leading-relaxed">
               Product updates, financial tips, security guides, and stories from
-              communities across South Sudan.
+              communities across Africa.
             </p>
           </div>
         </Container>

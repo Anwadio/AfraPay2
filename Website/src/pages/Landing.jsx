@@ -301,7 +301,7 @@ const Landing = () => {
       <SEOHead
         title="Secure Payments Across Africa"
         description="AfraPay enables secure global payments, business tills, and fast mobile transfers across Africa. Send, receive, and manage money with confidence."
-        keywords="AfraPay, Africa payments, mobile money, fintech, digital wallet, send money Africa, South Sudan"
+        keywords="AfraPay, Africa payments, mobile money, fintech, digital wallet, send money Africa, pan-African fintech"
         structuredData={SCHEMA_HOME}
       />
       {/* ── Hero Section ─────────────────────────────────── */}
@@ -336,7 +336,7 @@ const Landing = () => {
                 className="mb-6 border-white/30 text-white bg-white/10 flex items-center gap-2 w-fit"
               >
                 <Sparkles className="w-3.5 h-3.5 text-yellow-300" />
-                Revolutionizing South Sudanese Finance
+                Revolutionizing African Finance
               </Badge>
             </motion.div>
 
@@ -346,7 +346,7 @@ const Landing = () => {
               className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight"
             >
               Your Money,
-              <span className="gradient-text"> Everywhere</span> in South Sudan
+              <span className="gradient-text"> Everywhere</span> in Africa
             </motion.h1>
 
             <motion.p
@@ -354,8 +354,7 @@ const Landing = () => {
               custom={2}
               className="text-lg md:text-xl text-neutral-200 mb-8 max-w-xl font-medium leading-relaxed"
             >
-              Send, receive, and manage money across 10+ South Sudanese states
-              with
+              Send, receive, and manage money across 10+ African countries with
               <span className="text-white font-semibold"> the lowest fees</span>
               ,
               <span className="text-white font-semibold">
@@ -587,8 +586,8 @@ const Landing = () => {
               <span className="text-primary-600"> Modern Banking</span>
             </h2>
             <p className="text-xl text-neutral-600 max-w-2xl mx-auto">
-              Built specifically for South Sudanese businesses and individuals
-              who demand more from their financial services.
+              Built specifically for African businesses and individuals who
+              demand more from their financial services.
             </p>
           </motion.div>
 
@@ -799,7 +798,7 @@ const Landing = () => {
               Customer Stories
             </Badge>
             <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 mb-4">
-              Trusted by Leaders Across South Sudan
+              Trusted by Leaders Across Africa
             </h2>
             <p className="text-lg text-neutral-600">
               See how AfraPay is transforming businesses and lives across South

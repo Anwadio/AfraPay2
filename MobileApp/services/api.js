@@ -4,7 +4,8 @@ import { STORAGE_KEY } from "../i18n";
 
 // Configure base URL — update for production or use env variable
 const BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || "http://172.16.12.241:5000/api/v1";
+  /* process.env.EXPO_PUBLIC_API_URL || */
+  "https://afra-pay-backend.onrender.com/api/v1";
 
 const api = axios.create({
   baseURL: BASE_URL,

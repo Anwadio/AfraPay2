@@ -17,6 +17,7 @@ export const educationAPI = {
       const response = await api.get("/education/categories");
       return response.data || [];
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch categories:", error);
       throw error;
     }
@@ -51,6 +52,7 @@ export const educationAPI = {
         },
       };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch content:", error);
       throw error;
     }
@@ -64,6 +66,7 @@ export const educationAPI = {
       const response = await api.get("/education/content/featured");
       return response.data || [];
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch featured content:", error);
       throw error;
     }
@@ -78,6 +81,7 @@ export const educationAPI = {
       const response = await api.get(`/education/content/${contentId}`);
       return response.data;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch content item:", error);
       throw error;
     }
@@ -92,6 +96,7 @@ export const educationAPI = {
       const response = await api.post(`/education/content/${contentId}/like`);
       return response.data;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to like content:", error);
       throw error;
     }
@@ -108,6 +113,7 @@ export const educationAPI = {
       const response = await api.post(`/education/content/${contentId}/enroll`);
       return response.data;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to enroll in content:", error);
       throw error;
     }
@@ -122,6 +128,7 @@ export const educationAPI = {
       await api.delete(`/education/content/${contentId}/enroll`);
       return { success: true };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to unenroll from content:", error);
       throw error;
     }
@@ -138,6 +145,7 @@ export const educationAPI = {
       );
       return response.data;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to mark content complete:", error);
       throw error;
     }
@@ -153,6 +161,7 @@ export const educationAPI = {
       const response = await api.get("/education/my-content", { params });
       return response.data || [];
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch content enrollments:", error);
       throw error;
     }
@@ -177,6 +186,7 @@ export const educationAPI = {
         },
       };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch learning paths:", error);
       throw error;
     }
@@ -191,6 +201,7 @@ export const educationAPI = {
       const response = await api.get(`/education/paths/${pathId}`);
       return response.data;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch learning path:", error);
       throw error;
     }
@@ -205,6 +216,7 @@ export const educationAPI = {
       const response = await api.post(`/education/paths/${pathId}/enroll`);
       return response.data;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to enroll in path:", error);
       throw error;
     }
@@ -219,6 +231,7 @@ export const educationAPI = {
       await api.delete(`/education/paths/${pathId}/enroll`);
       return { success: true };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to unenroll from path:", error);
       throw error;
     }
@@ -233,6 +246,7 @@ export const educationAPI = {
       const response = await api.get("/education/my-paths", { params });
       return response.data || [];
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch path enrollments:", error);
       throw error;
     }
@@ -282,6 +296,7 @@ export const educationAPI = {
       const response = await api.post("/education/progress", progressData);
       return response.data;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to record progress:", error);
       throw error;
     }
@@ -296,6 +311,7 @@ export const educationAPI = {
       const response = await api.get(`/education/progress/${pathId}`);
       return response.data || [];
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch progress:", error);
       throw error;
     }
@@ -320,6 +336,7 @@ export const educationAPI = {
         },
       };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to fetch bookmarks:", error);
       throw error;
     }
@@ -334,6 +351,7 @@ export const educationAPI = {
       const response = await api.post("/education/bookmarks", { contentId });
       return response.data;
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to add bookmark:", error);
       throw error;
     }
@@ -348,6 +366,7 @@ export const educationAPI = {
       await api.delete(`/education/bookmarks/${bookmarkId}`);
       return { success: true };
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Failed to remove bookmark:", error);
       throw error;
     }

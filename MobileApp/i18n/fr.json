@@ -95,7 +95,8 @@
     "passwordWeak": "Faible",
     "passwordFair": "Moyen",
     "passwordGood": "Bon",
-    "passwordStrong": "Fort"
+    "passwordStrong": "Fort",
+    "signUpFree": "Inscrivez-vous gratuitement"
   },
   "home": {
     "totalBalance": "SOLDE TOTAL",

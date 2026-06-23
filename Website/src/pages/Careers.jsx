@@ -214,8 +214,7 @@ const Careers = () => {
             </h1>
             <p className="text-lg md:text-xl text-neutral-200 max-w-xl leading-relaxed">
               We're a passionate team on a mission to make financial services
-              accessible to every South Sudanese and, eventually, every African.
-              Come build with us.
+              accessible to every African. Come build with us.
             </p>
             <div className="flex flex-wrap gap-4 mt-8">
               <div className="bg-white/10 border border-white/20 rounded-full px-5 py-2 text-sm font-medium">
@@ -533,7 +532,7 @@ const Careers = () => {
             </h2>
             <p className="text-xl text-primary-100 mb-8 max-w-xl mx-auto">
               Join a team that's reshaping finance for millions of people across
-              South Sudan.
+              Africa.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button

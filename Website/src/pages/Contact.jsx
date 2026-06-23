@@ -76,7 +76,7 @@ const FAQS = [
   },
   {
     q: "What are the transfer fees?",
-    a: "We offer the lowest fees in South Sudan — starting from 0.5% per transfer. Check our Pricing page for a full breakdown.",
+    a: "We offer the lowest fees in Africa — starting from 0.5% per transfer. Check our Pricing page for a full breakdown.",
   },
   {
     q: "How do I reset my password?",
@@ -672,7 +672,7 @@ const Contact = () => {
                 🏢 Our Offices
               </Badge>
               <h2 className="text-3xl font-bold text-neutral-900 mb-2">
-                Find Us Across South Sudan
+                Find Us Across Africa
               </h2>
               <p className="text-neutral-600 mb-8">
                 Walk in during business hours — our teams are always happy to

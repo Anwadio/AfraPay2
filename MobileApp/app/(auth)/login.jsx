@@ -147,6 +147,13 @@ export default function LoginScreen() {
         setGlobalError(t("auth.verifyEmail"));
         return;
       }
+      // Network error (no response) — server unreachable
+      if (!err.response) {
+        setGlobalError(
+          "Cannot reach the server. Please check your internet connection and try again.",
+        );
+        return;
+      }
       const msg =
         err.response?.data?.error?.message ||
         err.response?.data?.message ||

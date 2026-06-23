@@ -61,7 +61,7 @@ const ApplicationFormModal = ({ isOpen, onClose, role }) => {
     // Optional field validations
     if (
       formData.applicantPhone &&
-      !/^[\+]?[\d\s\-\(\)]{8,20}$/.test(formData.applicantPhone)
+      !/^[+]?[\d\s\-()]{8,20}$/.test(formData.applicantPhone)
     ) {
       newErrors.applicantPhone = "Please enter a valid phone number";
     }

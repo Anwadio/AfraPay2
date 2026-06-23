@@ -439,6 +439,7 @@ function SettingsToggle({ iconName, label, desc, tint, value, onChange }) {
 export default function MoreScreen() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { t } = useTranslation();
 
   // ── Data state ───────────────────────────────────────────────────────────
   const [wallet, setWallet] = useState(null);

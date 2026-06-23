@@ -95,7 +95,8 @@
     "passwordWeak": "Weak",
     "passwordFair": "Fair",
     "passwordGood": "Good",
-    "passwordStrong": "Strong"
+    "passwordStrong": "Strong",
+    "signUpFree": "Sign up free"
   },
   "home": {
     "totalBalance": "TOTAL BALANCE",

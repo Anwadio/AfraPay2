@@ -12,7 +12,6 @@
  * Call `cleanupNotificationListeners(subscription)` in useEffect cleanup.
  */
 
-import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
@@ -23,6 +22,10 @@ import { userAPI } from "./api";
 const IS_EXPO_GO =
   Constants.appOwnership === "expo" ||
   Constants.executionEnvironment === "storeClient";
+
+// Conditionally load expo-notifications to prevent its side effects
+// (DevicePushTokenAutoRegistration) from throwing in Expo Go.
+const Notifications = IS_EXPO_GO ? null : require("expo-notifications");
 
 // Only set the notification handler in a real build
 if (!IS_EXPO_GO) {
