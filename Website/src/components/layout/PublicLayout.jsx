@@ -281,7 +281,7 @@ const PublicLayout = () => {
                       </svg>
                     </a>
                     <a
-                      href="https://facebook.com/afrapayafrica"
+                      href="https://www.facebook.com/people/Afra-Pay/pfbid02JvbyYYhLnr7vyNJG3L4eXxk77nP5JJeQYf6tR7d7JuESQmbzjiDZfTWZ4dMrQ9ftl/"
                       target="_blank"
                       rel="noopener noreferrer"
                       aria-label="Follow AfraPay on Facebook"

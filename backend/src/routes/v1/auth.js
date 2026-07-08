@@ -300,6 +300,40 @@ router.post(
 );
 
 /**
+ * @route   POST /api/v1/auth/verify-email-code
+ * @desc    Verify email with 6-digit code (mobile)
+ * @access  Public
+ */
+router.post(
+  "/verify-email-code",
+  body("email")
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Valid email is required"),
+  body("code")
+    .isLength({ min: 6, max: 6 })
+    .isNumeric()
+    .withMessage("Verification code must be 6 digits"),
+  validateRequest,
+  asyncHandler(authController.verifyEmailCode.bind(authController)),
+);
+
+/**
+ * @route   POST /api/v1/auth/resend-verification-code
+ * @desc    Resend email verification code (mobile)
+ * @access  Public
+ */
+router.post(
+  "/resend-verification-code",
+  body("email")
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Valid email is required"),
+  validateRequest,
+  asyncHandler(authController.resendEmailVerificationCode.bind(authController)),
+);
+
+/**
  * @route   POST /api/v1/auth/disable-2fa
  * @desc    Disable two-factor authentication
  * @access  Private
