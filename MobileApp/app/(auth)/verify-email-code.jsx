@@ -44,7 +44,8 @@ export default function VerifyEmailCodeScreen() {
     setGlobalError("");
     const e = {};
 
-    if (!code) e.code = t("auth.codeRequired") || "Verification code is required";
+    if (!code)
+      e.code = t("auth.codeRequired") || "Verification code is required";
     else if (code.length !== 6) e.code = "Code must be 6 digits";
     else if (!/^\d{6}$/.test(code)) e.code = "Code must contain only digits";
 
@@ -59,7 +60,9 @@ export default function VerifyEmailCodeScreen() {
       router.replace({
         pathname: "/(auth)/login",
         params: {
-          message: t("auth.emailVerifiedSuccess") || "Email verified! You can now sign in.",
+          message:
+            t("auth.emailVerifiedSuccess") ||
+            "Email verified! You can now sign in.",
         },
       });
     } catch (err) {
@@ -230,7 +233,9 @@ export default function VerifyEmailCodeScreen() {
           />
 
           <Button
-            title={loading ? "Verifying..." : (t("auth.verifyButton") || "Verify")}
+            title={
+              loading ? "Verifying..." : t("auth.verifyButton") || "Verify"
+            }
             onPress={handleVerify}
             loading={loading}
             disabled={loading || code.length !== 6}
@@ -260,10 +265,7 @@ export default function VerifyEmailCodeScreen() {
             </Text>
 
             {canResend ? (
-              <TouchableOpacity
-                onPress={handleResendCode}
-                disabled={loading}
-              >
+              <TouchableOpacity onPress={handleResendCode} disabled={loading}>
                 <Text
                   style={{
                     fontSize: 14,
@@ -298,7 +300,8 @@ export default function VerifyEmailCodeScreen() {
               lineHeight: 18,
             }}
           >
-            {t("auth.verifyCodeHint") || "The code expires in 10 minutes. Check your spam folder if you don't see the email."}
+            {t("auth.verifyCodeHint") ||
+              "The code expires in 10 minutes. Check your spam folder if you don't see the email."}
           </Text>
         </View>
       </KeyboardAvoidingView>

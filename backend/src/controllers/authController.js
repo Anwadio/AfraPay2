@@ -281,7 +281,10 @@ class AuthController {
               firstName,
             );
             verificationSent = true;
-            logger.debug("Email verification code sent to mobile user", { userId, email });
+            logger.debug("Email verification code sent to mobile user", {
+              userId,
+              email,
+            });
           } catch (sendErr) {
             logger.warn("Failed to send verification code (non-fatal)", {
               userId,
@@ -307,9 +310,16 @@ class AuthController {
           const verificationToken = `${userId}.${rawToken}`;
 
           try {
-            await this.sendVerificationEmail(email, verificationToken, firstName);
+            await this.sendVerificationEmail(
+              email,
+              verificationToken,
+              firstName,
+            );
             verificationSent = true;
-            logger.debug("Email verification link sent to web user", { userId, email });
+            logger.debug("Email verification link sent to web user", {
+              userId,
+              email,
+            });
           } catch (sendErr) {
             logger.warn("Failed to send verification link (non-fatal)", {
               userId,

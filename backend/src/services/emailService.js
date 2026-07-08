@@ -836,7 +836,10 @@ async function sendEmailVerificationCode(email, verificationCode, firstName) {
     throw new Error(`Email delivery failed: ${error.message}`);
   }
 
-  logger.info("Resend: email verification code sent", { to: email, id: data?.id });
+  logger.info("Resend: email verification code sent", {
+    to: email,
+    id: data?.id,
+  });
   return data;
 }
 
