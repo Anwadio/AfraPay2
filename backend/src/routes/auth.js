@@ -95,6 +95,28 @@ router.post(
 );
 
 /**
+ * @route   POST /api/v1/auth/verify-email-code
+ * @desc    Verify user email with 6-digit code (mobile)
+ * @access  Public
+ */
+router.post(
+  "/verify-email-code",
+  validation.validateEmailCodeVerification,
+  asyncHandler(authController.verifyEmailCode.bind(authController)),
+);
+
+/**
+ * @route   POST /api/v1/auth/resend-verification-code
+ * @desc    Resend email verification code (mobile)
+ * @access  Public
+ */
+router.post(
+  "/resend-verification-code",
+  validation.validateResendEmailCode,
+  asyncHandler(authController.resendEmailVerificationCode.bind(authController)),
+);
+
+/**
  * @route   POST /api/v1/auth/resend-verification
  * @desc    Resend email verification
  * @access  Private

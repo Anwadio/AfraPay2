@@ -771,8 +771,78 @@ async function sendMerchantRejectedEmail(
   return data;
 }
 
+/**
+ * Send a 6-digit verification code for email verification on mobile apps.
+ * The raw code is passed in — hashing is the caller's responsibility.
+ */
+async function sendEmailVerificationCode(email, verificationCode, firstName) {
+  const { data, error } = await resend.emails.send({
+    from: FROM,
+    to: email,
+    subject: "Your AfraPay email verification code",
+    html: `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /></head>
+        <body style="font-family:sans-serif;background:#f4f4f5;margin:0;padding:0;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 0;">
+            <tr><td align="center">
+              <table width="520" cellpadding="0" cellspacing="0"
+                style="background:#ffffff;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08);">
+                <tr>
+                  <td style="background:#1a56db;padding:28px 40px;">
+                    <h1 style="color:#fff;margin:0;font-size:22px;">AfraPay</h1>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:36px 40px;">
+                    <h2 style="margin:0 0 16px;color:#111827;font-size:20px;">
+                      Hi ${firstName}, verify your email address
+                    </h2>
+                    <p style="color:#374151;line-height:1.6;margin:0 0 24px;">
+                      Thanks for signing up! Use the code below to verify your email address. This code expires in <strong>10&nbsp;minutes</strong>.
+                    </p>
+                    <div style="background:#f3f4f6;border-radius:8px;padding:20px 32px;text-align:center;margin:0 0 24px;">
+                      <span style="font-size:36px;font-weight:700;letter-spacing:12px;color:#1a56db;">${verificationCode}</span>
+                    </div>
+                    <p style="color:#374151;line-height:1.6;margin:0;">
+                      Don't share this code with anyone. AfraPay support will never ask for it.
+                    </p>
+                    <p style="margin:20px 0 0;font-size:13px;color:#9ca3af;">
+                      If you did not create an AfraPay account, you can safely ignore this email.
+                    </p>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:20px 40px;background:#f9fafb;border-top:1px solid #e5e7eb;">
+                    <p style="margin:0;font-size:12px;color:#9ca3af;">
+                      © ${new Date().getFullYear()} AfraPay. All rights reserved.
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+        </body>
+      </html>
+    `,
+  });
+
+  if (error) {
+    logger.error("Resend: failed to send email verification code", {
+      to: email,
+      error: error.message,
+    });
+    throw new Error(`Email delivery failed: ${error.message}`);
+  }
+
+  logger.info("Resend: email verification code sent", { to: email, id: data?.id });
+  return data;
+}
+
 module.exports = {
   sendVerificationEmail,
+  sendEmailVerificationCode,
   sendPasswordResetEmail,
   sendMFAOtpEmail,
   sendLoginAlertEmail,

@@ -27,7 +27,19 @@ function PasswordStrengthBar({ password }) {
     if (/[^A-Za-z0-9]/.test(pw)) s++;
     return s;
   };
+
+  const getRequirements = (pw) => {
+    return {
+      length: pw.length >= 8,
+      uppercase: /[A-Z]/.test(pw),
+      lowercase: /[a-z]/.test(pw),
+      number: /[0-9]/.test(pw),
+      special: /[^A-Za-z0-9]/.test(pw),
+    };
+  };
+
   const strength = getStrength(password);
+  const requirements = getRequirements(password);
   const COLORS = ["#e2e8f0", "#ef4444", "#f59e0b", "#2563eb", "#059669"];
   const LABELS = [
     "",
@@ -37,15 +49,16 @@ function PasswordStrengthBar({ password }) {
     t("auth.passwordStrong"),
   ];
   if (!password) return null;
+
   return (
     <View style={{ marginTop: -8, marginBottom: 14 }}>
-      <View style={{ flexDirection: "row", gap: 4, marginBottom: 5 }}>
+      <View style={{ flexDirection: "row", gap: 4, marginBottom: 8 }}>
         {[1, 2, 3, 4].map((i) => (
           <View
             key={i}
             style={{
               flex: 1,
-              height: 3,
+              height: 4,
               borderRadius: 2,
               backgroundColor: i <= strength ? COLORS[strength] : "#e2e8f0",
             }}
@@ -53,11 +66,48 @@ function PasswordStrengthBar({ password }) {
         ))}
       </View>
       {strength > 0 && (
-        <Text
-          style={{ fontSize: 11, color: COLORS[strength], fontWeight: "700" }}
-        >
-          {LABELS[strength]} password
-        </Text>
+        <>
+          <Text
+            style={{
+              fontSize: 12,
+              color: COLORS[strength],
+              fontWeight: "700",
+              marginBottom: 8,
+            }}
+          >
+            {LABELS[strength]} password
+          </Text>
+
+          {strength < 4 && (
+            <View style={{ gap: 4 }}>
+              {!requirements.length && (
+                <Text style={{ fontSize: 11, color: "#9ca3af" }}>
+                  • At least 8 characters
+                </Text>
+              )}
+              {!requirements.uppercase && (
+                <Text style={{ fontSize: 11, color: "#9ca3af" }}>
+                  • One uppercase letter (A-Z)
+                </Text>
+              )}
+              {!requirements.lowercase && (
+                <Text style={{ fontSize: 11, color: "#9ca3af" }}>
+                  • One lowercase letter (a-z)
+                </Text>
+              )}
+              {!requirements.number && (
+                <Text style={{ fontSize: 11, color: "#9ca3af" }}>
+                  • One number (0-9)
+                </Text>
+              )}
+              {!requirements.special && (
+                <Text style={{ fontSize: 11, color: "#9ca3af" }}>
+                  • One special character (!@#$%^&*)
+                </Text>
+              )}
+            </View>
+          )}
+        </>
       )}
     </View>
   );
@@ -98,6 +148,15 @@ export default function RegisterScreen() {
     setGlobalError("");
   };
 
+  const isPasswordValid = (password) => {
+    // Must have uppercase, lowercase, number, and special character
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[^A-Za-z0-9]/.test(password);
+    return hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+  };
+
   const validateStep1 = () => {
     const e = {};
     if (!form.firstName.trim()) e.firstName = t("auth.firstNameRequired");
@@ -113,6 +172,8 @@ export default function RegisterScreen() {
     const e = {};
     if (!form.password) e.password = t("auth.passwordRequired");
     else if (form.password.length < 8) e.password = t("auth.passwordMinLength");
+    else if (!isPasswordValid(form.password))
+      e.password = t("auth.passwordRequirements");
     if (!form.confirmPassword)
       e.confirmPassword = t("auth.confirmPasswordRequired");
     else if (form.password !== form.confirmPassword)
@@ -148,11 +209,11 @@ export default function RegisterScreen() {
         termsAccepted: form.termsAccepted,
         marketingAccepted: form.marketingAccepted,
       });
+      // Redirect to email verification code screen for mobile
       router.replace({
-        pathname: "/(auth)/login",
+        pathname: "/(auth)/verify-email-code",
         params: {
-          message:
-            "Account created! Please check your email to verify your account before signing in.",
+          email: form.email.trim().toLowerCase(),
         },
       });
     } catch (err) {

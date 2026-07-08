@@ -191,11 +191,42 @@ const validateMFAVerification = [
   validateRequest,
 ];
 
+/**
+ * Validation for email verification code (mobile)
+ */
+const validateEmailCodeVerification = [
+  body("email")
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Please provide a valid email address"),
+
+  body("code")
+    .isLength({ min: 6, max: 6 })
+    .isNumeric()
+    .withMessage("Verification code must be 6 digits"),
+
+  validateRequest,
+];
+
+/**
+ * Validation for resending email verification code
+ */
+const validateResendEmailCode = [
+  body("email")
+    .isEmail()
+    .normalizeEmail()
+    .withMessage("Please provide a valid email address"),
+
+  validateRequest,
+];
+
 module.exports = {
   validateRegistration,
   validateLogin,
   validateRefreshToken,
   validateEmailVerification,
+  validateEmailCodeVerification,
+  validateResendEmailCode,
   validatePasswordResetRequest,
   validatePasswordReset,
   validateMFASetup,

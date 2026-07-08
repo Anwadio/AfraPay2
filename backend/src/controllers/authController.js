@@ -254,32 +254,71 @@ class AuthController {
           );
         }
 
-        // Step 7: Generate email verification token
-        // Token format sent in the link: "<userId>.<rawToken>"
-        // Only a SHA-256 hash of rawToken is persisted — the plain value
-        // is never stored, so it cannot be leaked from the database.
-        const rawToken = crypto.randomBytes(32).toString("hex");
-        const tokenHash = crypto
-          .createHash("sha256")
-          .update(rawToken)
-          .digest("hex");
-        const emailVerificationExpiry = new Date(
-          Date.now() + 24 * 60 * 60 * 1000,
-        ).toISOString(); // 24 hours
+        // Step 7: Determine verification method based on client type
+        const isMobile = this.isMobileRequest(req);
+        let verificationSent = false;
 
-        // Store hash + expiry in user prefs so verifyEmail can validate it
-        await mergePrefs(userId, {
-          emailVerificationHash: tokenHash,
-          emailVerificationExpiry,
-        });
+        if (isMobile) {
+          // Mobile: Send 6-digit verification code
+          const verificationCode = this.generateVerificationCode();
+          const codeHash = crypto
+            .createHash("sha256")
+            .update(verificationCode)
+            .digest("hex");
+          const codeExpiry = new Date(
+            Date.now() + 10 * 60 * 1000,
+          ).toISOString(); // 10 minutes
 
-        // Compose the URL-safe token: "<userId>.<rawToken>"
-        const verificationToken = `${userId}.${rawToken}`;
+          await mergePrefs(userId, {
+            emailVerificationCodeHash: codeHash,
+            emailVerificationCodeExpiry: codeExpiry,
+          });
 
-        // Step 8: Send verification email via Resend
-        await this.sendVerificationEmail(email, verificationToken, firstName);
+          try {
+            await emailService.sendEmailVerificationCode(
+              email,
+              verificationCode,
+              firstName,
+            );
+            verificationSent = true;
+            logger.debug("Email verification code sent to mobile user", { userId, email });
+          } catch (sendErr) {
+            logger.warn("Failed to send verification code (non-fatal)", {
+              userId,
+              error: sendErr.message,
+            });
+          }
+        } else {
+          // Web: Send verification link
+          const rawToken = crypto.randomBytes(32).toString("hex");
+          const tokenHash = crypto
+            .createHash("sha256")
+            .update(rawToken)
+            .digest("hex");
+          const tokenExpiry = new Date(
+            Date.now() + 24 * 60 * 60 * 1000,
+          ).toISOString(); // 24 hours
 
-        // Step 9: Generate SMS OTP if phone provided
+          await mergePrefs(userId, {
+            emailVerificationHash: tokenHash,
+            emailVerificationExpiry: tokenExpiry,
+          });
+
+          const verificationToken = `${userId}.${rawToken}`;
+
+          try {
+            await this.sendVerificationEmail(email, verificationToken, firstName);
+            verificationSent = true;
+            logger.debug("Email verification link sent to web user", { userId, email });
+          } catch (sendErr) {
+            logger.warn("Failed to send verification link (non-fatal)", {
+              userId,
+              error: sendErr.message,
+            });
+          }
+        }
+
+        // Step 8: Generate SMS OTP if phone provided
         let smsOTP = null;
         if (phone) {
           smsOTP = this.generateOTP();
@@ -895,6 +934,206 @@ class AuthController {
 
   generateOTP(length = 6) {
     return crypto.randomInt(100000, 999999).toString();
+  }
+
+  generateVerificationCode() {
+    // Generate a random 6-digit code
+    return crypto.randomInt(100000, 999999).toString();
+  }
+
+  isMobileRequest(req) {
+    const userAgent = req.get("User-Agent") || "";
+    return /okhttp|expo|react-native|mobile|android|iphone/i.test(userAgent);
+  }
+
+  async verifyEmailCode(req, res) {
+    try {
+      const { email, code } = req.body;
+
+      if (!email || !code) {
+        throw new ValidationError("Email and verification code are required");
+      }
+
+      // Fetch user by email
+      let users_list;
+      try {
+        users_list = await withTimeout(
+          users.list([Query.equal("email", email)]),
+          10000,
+          "Appwrite users.list",
+        );
+      } catch {
+        throw new ValidationError("User not found");
+      }
+
+      if (users_list.total === 0) {
+        throw new ValidationError("User not found");
+      }
+
+      const user = users_list.users[0];
+      const userId = user.$id;
+
+      // Check stored code hash and expiry
+      const storedCodeHash = user.prefs?.emailVerificationCodeHash;
+      const expiryStr = user.prefs?.emailVerificationCodeExpiry;
+
+      if (!storedCodeHash || !expiryStr) {
+        throw new ValidationError(
+          "No verification code found. Please request a new one.",
+        );
+      }
+
+      // Check expiry
+      if (new Date(expiryStr) < new Date()) {
+        throw new ValidationError("Verification code has expired");
+      }
+
+      // Check if email already verified
+      if (user.emailVerification) {
+        res.success(null, "Email is already verified");
+        return;
+      }
+
+      // Hash the provided code and compare
+      const incomingHash = crypto
+        .createHash("sha256")
+        .update(code)
+        .digest("hex");
+      const storedHashBuf = Buffer.from(storedCodeHash, "hex");
+      const incomingHashBuf = Buffer.from(incomingHash, "hex");
+
+      if (
+        storedHashBuf.length !== incomingHashBuf.length ||
+        !crypto.timingSafeEqual(storedHashBuf, incomingHashBuf)
+      ) {
+        throw new ValidationError("Invalid verification code");
+      }
+
+      // Mark email as verified
+      await users.updateEmailVerification(userId, true);
+      await users.updateLabels(userId, ["emailVerified", "active"]);
+
+      // Update profile document
+      try {
+        await db.updateDocument(
+          config.database.appwrite.databaseId,
+          config.database.appwrite.userCollectionId,
+          userId,
+          { emailVerified: true, accountStatus: "active" },
+        );
+      } catch (docErr) {
+        logger.warn("verifyEmailCode: could not update profile document", {
+          userId,
+          error: docErr.message,
+        });
+      }
+
+      // Clear code from prefs
+      try {
+        await mergePrefs(userId, {
+          emailVerificationCodeHash: null,
+          emailVerificationCodeExpiry: null,
+        });
+      } catch {
+        // Non-fatal
+      }
+
+      logger.audit("EMAIL_VERIFIED_WITH_CODE", userId, {
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+      });
+
+      res.success(
+        {
+          user: {
+            id: userId,
+            email: user.email,
+            emailVerified: true,
+          },
+        },
+        "Email verified successfully",
+      );
+    } catch (error) {
+      logger.error("Email code verification failed", {
+        email: req.body?.email,
+        error: error.message,
+        ip: req.ip,
+      });
+      throw error;
+    }
+  }
+
+  async resendEmailVerificationCode(req, res) {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        throw new ValidationError("Email is required");
+      }
+
+      // Fetch user by email
+      let users_list;
+      try {
+        users_list = await withTimeout(
+          users.list([Query.equal("email", email)]),
+          10000,
+          "Appwrite users.list",
+        );
+      } catch {
+        throw new ValidationError("User not found");
+      }
+
+      if (users_list.total === 0) {
+        throw new ValidationError("User not found");
+      }
+
+      const user = users_list.users[0];
+      const userId = user.$id;
+
+      if (user.emailVerification) {
+        res.success(null, "Email is already verified");
+        return;
+      }
+
+      // Generate new code
+      const verificationCode = this.generateVerificationCode();
+      const codeHash = crypto
+        .createHash("sha256")
+        .update(verificationCode)
+        .digest("hex");
+      const codeExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
+
+      // Store code hash in prefs
+      await mergePrefs(userId, {
+        emailVerificationCodeHash: codeHash,
+        emailVerificationCodeExpiry: codeExpiry,
+      });
+
+      // Send code email
+      const firstName = user.name?.split(" ")[0] || "User";
+      await emailService.sendEmailVerificationCode(
+        email,
+        verificationCode,
+        firstName,
+      );
+
+      logger.audit("EMAIL_VERIFICATION_CODE_RESENT", userId, {
+        ip: req.ip,
+        userAgent: req.get("User-Agent"),
+      });
+
+      res.success(
+        { codeExpiry },
+        "Verification code sent. Please check your email.",
+      );
+    } catch (error) {
+      logger.error("Resend email verification code failed", {
+        email: req.body?.email,
+        error: error.message,
+        ip: req.ip,
+      });
+      throw error;
+    }
   }
 
   async generateTokens(

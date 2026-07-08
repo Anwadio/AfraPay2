@@ -54,8 +54,11 @@ export const authAPI = {
   changePassword: (currentPassword, newPassword) =>
     api.post("/auth/change-password", { currentPassword, newPassword }),
   verifyEmail: (token) => api.get(`/auth/verify-email/${token}`),
+  verifyEmailCode: (data) => api.post("/auth/verify-email-code", data),
   resendVerificationEmail: (email) =>
     api.post("/auth/resend-verification-email", { email }),
+  resendEmailVerificationCode: (data) =>
+    api.post("/auth/resend-verification-code", data),
   enable2FA: () => api.post("/auth/enable-2fa"),
   verify2FA: (code) => api.post("/auth/verify-2fa", { code }),
   disable2FA: (code, password) =>
