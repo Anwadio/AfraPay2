@@ -317,7 +317,7 @@ export default function DashboardScreen() {
           </View>
           <View style={styles.headerActions}>
             <TouchableOpacity
-              onPress={() => router.push("/screens/notifications")}
+              onPress={() => router.push("/Screens/notifications")}
               style={styles.iconCircle}
             >
               <Ionicons
@@ -334,7 +334,7 @@ export default function DashboardScreen() {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => router.push("/screens/profile")}
+              onPress={() => router.push("/Screens/profile")}
               style={styles.avatarCircle}
             >
               <Text style={styles.avatarText}>

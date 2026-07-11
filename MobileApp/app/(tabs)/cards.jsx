@@ -21,13 +21,15 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withSpring,
+  withSequence,
+  runOnJS,
+  useAnimatedReaction,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { cardAPI, walletAPI } from "../../services/api";
 import { useTranslation } from "react-i18next";
 
-// â”€â”€â”€ Constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const CARD_COLORS = [
   "#2563EB", // blue
   "#334155", // slate
@@ -62,7 +64,6 @@ const EMPTY_FORM = {
   color: CARD_COLORS[0],
 };
 
-// â”€â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function uuidv4() {
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
@@ -99,29 +100,38 @@ function formatCardInput(text) {
   return digits.replace(/(.{4})/g, "$1 ").trim();
 }
 
-// â”€â”€â”€ Skeleton â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function SkeletonBox({ style }) {
-  const anim = useRef(new RNAnimated.Value(0)).current;
+  const animRef = useRef(null);
+  const [opacity, setOpacity] = useState(null);
+
   useEffect(() => {
-    RNAnimated.loop(
-      RNAnimated.sequence([
-        RNAnimated.timing(anim, {
-          toValue: 1,
-          duration: 750,
-          useNativeDriver: true,
-        }),
-        RNAnimated.timing(anim, {
-          toValue: 0,
-          duration: 750,
-          useNativeDriver: true,
-        }),
-      ]),
-    ).start();
-  }, [anim]);
-  const opacity = anim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.65],
-  });
+    if (!animRef.current) {
+      const anim = new RNAnimated.Value(0);
+      animRef.current = anim;
+
+      const interpOpacity = anim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.3, 0.65],
+      });
+      setOpacity(interpOpacity);
+
+      RNAnimated.loop(
+        RNAnimated.sequence([
+          RNAnimated.timing(anim, {
+            toValue: 1,
+            duration: 750,
+            useNativeDriver: true,
+          }),
+          RNAnimated.timing(anim, {
+            toValue: 0,
+            duration: 750,
+            useNativeDriver: true,
+          }),
+        ]),
+      ).start();
+    }
+  }, []);
+
   return (
     <RNAnimated.View
       style={[{ backgroundColor: "#CBD5E1", borderRadius: 10, opacity }, style]}
@@ -164,21 +174,32 @@ function CardSkeletons() {
   );
 }
 
-// â”€â”€â”€ AnimatedCard (tap scale) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AnimatedCard({ children, onPress, style }) {
   const scale = useSharedValue(1);
+  const [isPressed, setIsPressed] = useState(false);
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
+
+  const updateScale = useCallback(
+    (pressed) => {
+      "use worklet";
+      if (pressed) {
+        scale.value = withSpring(0.975, { damping: 20, stiffness: 500 });
+      } else {
+        scale.value = withSpring(1, { damping: 20, stiffness: 500 });
+      }
+    },
+    [scale],
+  );
+
+  useAnimatedReaction(() => isPressed, updateScale);
+
   return (
     <Animated.View style={[animStyle, style]}>
       <Pressable
-        onPressIn={() => {
-          scale.value = withSpring(0.975, { damping: 20, stiffness: 500 });
-        }}
-        onPressOut={() => {
-          scale.value = withSpring(1, { damping: 20, stiffness: 500 });
-        }}
+        onPressIn={() => setIsPressed(true)}
+        onPressOut={() => setIsPressed(false)}
         onPress={onPress}
       >
         {children}
@@ -187,7 +208,6 @@ function AnimatedCard({ children, onPress, style }) {
   );
 }
 
-// â”€â”€â”€ CardFace â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CardFace({ card, onPress }) {
   const { t } = useTranslation();
   const frozen = card.status === "frozen";
@@ -252,9 +272,7 @@ function CardFace({ card, onPress }) {
         />
 
         {/* Card number */}
-        <Text style={styles.cardNumber}>
-          â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ {card.last4}
-        </Text>
+        <Text style={styles.cardNumber}>{card.last4}</Text>
 
         {/* Bottom row */}
         <View style={styles.cardBottomRow}>
@@ -298,7 +316,6 @@ function CardFace({ card, onPress }) {
   );
 }
 
-// â”€â”€â”€ DetailsPanel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function DetailsPanel({ card }) {
   const { t } = useTranslation();
   return (
@@ -308,9 +325,7 @@ function DetailsPanel({ card }) {
           <Text style={styles.detailCellLabel}>
             {t("cards.cardNumberLabel")}
           </Text>
-          <Text style={styles.detailCellValue}>
-            â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ â€¢â€¢â€¢â€¢ {card.last4}
-          </Text>
+          <Text style={styles.detailCellValue}>{card.last4}</Text>
         </View>
         <View style={styles.detailCell}>
           <Text style={styles.detailCellLabel}>{t("cards.expiryLabel")}</Text>
@@ -344,7 +359,6 @@ function DetailsPanel({ card }) {
   );
 }
 
-// â”€â”€â”€ ActionRow â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ActionBtn({ iconName, label, tint = "#64748B", onPress, disabled }) {
   return (
     <TouchableOpacity
@@ -375,7 +389,6 @@ function ActionBtn({ iconName, label, tint = "#64748B", onPress, disabled }) {
   );
 }
 
-// â”€â”€â”€ CardItem â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CardItem({
   card,
   onToggleReveal,
@@ -434,7 +447,6 @@ function CardItem({
   );
 }
 
-// â”€â”€â”€ FormField â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function FormField({ label, error, children }) {
   return (
     <View style={styles.formField}>
@@ -470,7 +482,6 @@ function StyledInput({
   );
 }
 
-// â”€â”€â”€ ColorPicker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function ColorPicker({ selected, onSelect }) {
   return (
     <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
@@ -498,7 +509,6 @@ function ColorPicker({ selected, onSelect }) {
   );
 }
 
-// â”€â”€â”€ AddCardModal â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function AddCardModal({ visible, onClose, onAdded }) {
   const { t } = useTranslation();
   const [form, setForm] = useState(EMPTY_FORM);
@@ -692,12 +702,12 @@ function AddCardModal({ visible, onClose, onAdded }) {
               <View style={{ flexDirection: "row", gap: 10 }}>
                 {CARD_TYPES.map((cardType) => (
                   <TouchableOpacity
-                    key={t}
+                    key={cardType}
                     onPress={() => {
                       Haptics.impactAsync(
                         Haptics.ImpactFeedbackStyle.Light,
                       ).catch(() => {});
-                      setF("cardType")(t);
+                      setF("cardType")(cardType);
                     }}
                     style={[
                       styles.typeChip,
@@ -747,6 +757,7 @@ function AddCardModal({ visible, onClose, onAdded }) {
 function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
   const { t } = useTranslation();
   const idempotencyKey = useRef(uuidv4());
+  const resetRef = useRef(false);
   const [cardId, setCardId] = useState(preselectedCard?.id || "");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("KES");
@@ -756,11 +767,14 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
 
   // Sync preselected card when modal opens
   useEffect(() => {
-    if (visible) {
+    if (visible && !resetRef.current) {
+      resetRef.current = true;
       setCardId(preselectedCard?.id || "");
       setAmount("");
       setError(null);
       setSuccess(null);
+    } else if (!visible) {
+      resetRef.current = false;
     }
   }, [visible, preselectedCard]);
 
@@ -1016,7 +1030,6 @@ function FundWalletModal({ visible, onClose, cards, preselectedCard }) {
   );
 }
 
-// â”€â”€â”€ CardBenefits â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function CardBenefits() {
   const { t } = useTranslation();
   const CARD_BENEFITS = [
@@ -1068,7 +1081,6 @@ function CardBenefits() {
   );
 }
 
-// â”€â”€â”€ CardsScreen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export default function CardsScreen() {
   const { t } = useTranslation();
   const [cards, setCards] = useState([]);
@@ -1080,7 +1092,18 @@ export default function CardsScreen() {
   const [fundCard, setFundCard] = useState(null);
   const fabScale = useSharedValue(1);
 
-  // â”€â”€ Data fetch â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  const handleFabPress = () => {
+    "use worklet";
+    fabScale.value = withSequence(
+      withSpring(0.88, { damping: 12 }),
+      withSpring(1),
+    );
+    runOnJS(Haptics.impactAsync)(Haptics.ImpactFeedbackStyle.Medium).catch(
+      () => {},
+    );
+    runOnJS(setShowAdd)(true);
+  };
+
   const fetchCards = useCallback(async () => {
     try {
       setError(null);
@@ -1094,11 +1117,35 @@ export default function CardsScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
-    fetchCards();
-  }, [fetchCards]);
+    let mounted = true;
+
+    const loadCards = async () => {
+      try {
+        setError(null);
+        const res = await cardAPI.getCards();
+        const payload = res.data?.data ?? res.data;
+        const arr = Array.isArray(payload) ? payload : (payload?.cards ?? []);
+        if (mounted) setCards(arr.map((c, i) => mapApiCard(c, i)));
+      } catch (err) {
+        if (mounted)
+          setError(err.response?.data?.message || t("cards.loadFailed"));
+      } finally {
+        if (mounted) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    };
+
+    loadCards();
+
+    return () => {
+      mounted = false;
+    };
+  }, [t]);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -1106,7 +1153,6 @@ export default function CardsScreen() {
     await fetchCards();
   };
 
-  // â”€â”€ Actions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const handleAdded = useCallback((raw) => {
     setCards((prev) => [...prev, mapApiCard(raw, prev.length)]);
   }, []);
@@ -1168,12 +1214,10 @@ export default function CardsScreen() {
     }
   };
 
-  // â”€â”€ FAB animation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const fabStyle = useAnimatedStyle(() => ({
     transform: [{ scale: fabScale.value }],
   }));
 
-  // â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (loading) {
     return (
       <SafeAreaView style={styles.screen} edges={["top"]}>
@@ -1221,7 +1265,6 @@ export default function CardsScreen() {
         }
         contentContainerStyle={styles.scrollContent}
       >
-        {/* â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <Animated.View
           entering={FadeInDown.duration(350).delay(0)}
           style={styles.pageHeader}
@@ -1255,7 +1298,6 @@ export default function CardsScreen() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* â”€â”€ Card list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         {cards.length === 0 ? (
           <Animated.View
             entering={FadeInDown.duration(350).delay(60)}
@@ -1309,22 +1351,12 @@ export default function CardsScreen() {
           </View>
         )}
 
-        {/* â”€â”€ Card benefits â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <CardBenefits />
       </ScrollView>
 
-      {/* â”€â”€ Floating Add Button (secondary, bottom-right) â”€â”€â”€â”€â”€â”€â”€ */}
       <Animated.View style={[styles.fab, fabStyle]}>
         <TouchableOpacity
-          onPress={() => {
-            fabScale.value = withSpring(0.88, { damping: 12 }, () => {
-              fabScale.value = withSpring(1);
-            });
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(
-              () => {},
-            );
-            setShowAdd(true);
-          }}
+          onPress={handleFabPress}
           style={styles.fabInner}
           activeOpacity={0.85}
         >
@@ -1332,7 +1364,6 @@ export default function CardsScreen() {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* â”€â”€ Modals â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <AddCardModal
         visible={showAdd}
         onClose={() => setShowAdd(false)}
@@ -1348,7 +1379,6 @@ export default function CardsScreen() {
   );
 }
 
-// â”€â”€â”€ Styles â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
@@ -1358,7 +1388,6 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
   },
 
-  // â”€â”€ Page header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   pageHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -1393,7 +1422,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 
-  // â”€â”€ Card list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   cardList: {
     paddingHorizontal: 20,
     gap: 20,
@@ -1403,7 +1431,6 @@ const styles = StyleSheet.create({
     gap: 10,
   },
 
-  // â”€â”€ Card face â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   cardShadow: {
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 8 },
@@ -1528,7 +1555,6 @@ const styles = StyleSheet.create({
     right: 14,
   },
 
-  // â”€â”€ Details panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   detailsPanel: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -1563,7 +1589,6 @@ const styles = StyleSheet.create({
     color: "#1E293B",
   },
 
-  // â”€â”€ Action row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   actionRow: {
     flexDirection: "row",
     gap: 8,
@@ -1590,7 +1615,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
 
-  // â”€â”€ FAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   fab: {
     position: "absolute",
     bottom: 100,
@@ -1610,7 +1634,6 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
 
-  // â”€â”€ Empty state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   emptyWrap: {
     alignItems: "center",
     paddingVertical: 52,
@@ -1638,7 +1661,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // â”€â”€ Error state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   errorWrap: {
     flex: 1,
     alignItems: "center",
