@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "AfraPayApp",
-    "slug": "AfraPayApp",
+    "slug": "afra-pay",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
