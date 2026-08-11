@@ -709,10 +709,17 @@ class AuthController {
    */
   async refreshToken(req, res) {
     try {
-      const refreshToken = req.cookies.refreshToken || req.body.refreshToken;
+      const refreshToken =
+        req.cookies?.refreshToken ||
+        req.body?.refreshToken ||
+        (req.headers.authorization || "").startsWith("Bearer ")
+          ? req.headers.authorization.split(" ")[1]
+          : req.headers["x-refresh-token"];
 
       if (!refreshToken) {
-        throw new AuthenticationError("Refresh token is required");
+        throw new AuthenticationError(
+          "Refresh token is required. Provide it in the cookie 'refreshToken', the JSON body field 'refreshToken', the Authorization header 'Bearer <token>', or the 'x-refresh-token' header.",
+        );
       }
 
       // Verify refresh token
