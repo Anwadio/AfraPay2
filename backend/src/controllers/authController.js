@@ -712,9 +712,10 @@ class AuthController {
       const refreshToken =
         req.cookies?.refreshToken ||
         req.body?.refreshToken ||
-        (req.headers.authorization || "").startsWith("Bearer ")
+        req.headers?.["x-refresh-token"] ||
+        ((req.headers?.authorization || "").startsWith("Bearer ")
           ? req.headers.authorization.split(" ")[1]
-          : req.headers["x-refresh-token"];
+          : undefined);
 
       if (!refreshToken) {
         throw new AuthenticationError(
