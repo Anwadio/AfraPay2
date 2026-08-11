@@ -6,8 +6,20 @@
 const { ID, Query } = require("node-appwrite");
 const { databaseManager } = require("../src/database/connection");
 
-module.exports.db = databaseManager.databases;
-module.exports.users = databaseManager.users;
-module.exports.account = databaseManager.account;
+Object.defineProperty(module.exports, "db", {
+  enumerable: true,
+  get: () => databaseManager.databases,
+});
+
+Object.defineProperty(module.exports, "users", {
+  enumerable: true,
+  get: () => databaseManager.users,
+});
+
+Object.defineProperty(module.exports, "account", {
+  enumerable: true,
+  get: () => databaseManager.account,
+});
+
 module.exports.ID = ID;
 module.exports.Query = Query;
