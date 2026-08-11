@@ -22,7 +22,8 @@ const {
 } = require("../middleware/monitoring/errorHandler");
 
 // Import Appwrite clients from services
-const { account, users, db, ID, Query } = require("../../services/appwriet");
+const appwrite = require("../../services/appwriet");
+const { ID, Query } = appwrite;
 
 // Real token revocation (wired to Redis / in-memory blacklist)
 const { addToBlacklist, isBlacklisted } = require("../utils/tokenBlacklist");
@@ -95,11 +96,11 @@ function withTimeout(promise, ms = 10000, label = "Operation") {
  */
 async function mergePrefs(userId, updates) {
   const current = await withTimeout(
-    users.get(userId),
+    appwrite.users.get(userId),
     10000,
-    "Appwrite users.get (mergePrefs)",
+    "Appwrite appwrite.users.get (mergePrefs)",
   );
-  return users.updatePrefs(userId, { ...(current.prefs || {}), ...updates });
+  return appwrite.users.updatePrefs(userId, { ...(current.prefs || {}), ...updates });
 }
 
 class AuthController {
@@ -128,7 +129,7 @@ class AuthController {
       // Must agree to Terms before we do anything
       if (!termsAccepted) {
         throw new ValidationError(
-          "You must accept the Terms of Service and Privacy Policy to create an account.",
+          "You must accept the Terms of Service and Privacy Policy to create an appwrite.account.",
         );
       }
 
@@ -163,7 +164,7 @@ class AuthController {
       const userId = ID.unique();
       let user;
       try {
-        user = await users.create(
+        user = await appwrite.users.create(
           userId,
           email,
           phone,
@@ -194,7 +195,7 @@ class AuthController {
         });
 
         // Step 5b: Set user role label (Appwrite labels must be a flat string array)
-        await users.updateLabels(userId, ["user"]);
+        await appwrite.users.updateLabels(userId, ["user"]);
 
         // Step 6: Store user data in database collection
         logger.debug("Storing user profile document", { userId });
@@ -227,7 +228,7 @@ class AuthController {
         };
 
         try {
-          await db.createDocument(
+          await appwrite.db.createDocument(
             config.database.appwrite.databaseId,
             config.database.appwrite.userCollectionId,
             userId,
@@ -356,7 +357,7 @@ class AuthController {
           getCreateAdminNotification()(
             "user_signup",
             "New User Registered",
-            `${firstName} ${lastName} (${email}) has created an account.`,
+            `${firstName} ${lastName} (${email}) has created an appwrite.account.`,
             { link: `/users/${userId}` },
           ).catch(() => {});
         });
@@ -392,7 +393,7 @@ class AuthController {
           },
         );
         try {
-          await users.delete(userId);
+          await appwrite.users.delete(userId);
         } catch (_) {}
         throw postCreateError;
       }
@@ -419,9 +420,9 @@ class AuthController {
 
       // Step 2: Get user from Appwrite
       const userList = await withTimeout(
-        users.list([Query.equal("email", email)]),
+        appwrite.users.list([Query.equal("email", email)]),
         10000,
-        "Appwrite users.list",
+        "Appwrite appwrite.users.list",
       );
       if (userList.total === 0) {
         await this.logFailedLogin(null, email, "user_not_found", req);
@@ -434,7 +435,7 @@ class AuthController {
       // Step 3: Fetch profile from DB collection for account status / settings
       let userProfile = null;
       try {
-        userProfile = await db.getDocument(
+        userProfile = await appwrite.db.getDocument(
           config.database.appwrite.databaseId,
           config.database.appwrite.userCollectionId,
           userId,
@@ -738,7 +739,7 @@ class AuthController {
 
       // Get user from Appwrite — JWT signature + blacklist check is the security boundary;
       // the in-memory session store is not reliable across server restarts in development.
-      const user = await users.get(decoded.sub);
+      const user = await appwrite.users.get(decoded.sub);
 
       // V-005: Check token version
       const currentVersion = parseInt(user.prefs?.tokenVersion || 0, 10);
@@ -807,9 +808,9 @@ class AuthController {
       let user;
       try {
         user = await withTimeout(
-          users.get(userId),
+          appwrite.users.get(userId),
           10000,
-          "Appwrite users.get",
+          "Appwrite appwrite.users.get",
         );
       } catch {
         throw new ValidationError("Invalid or expired verification token");
@@ -852,12 +853,12 @@ class AuthController {
       }
 
       // --- 4. Mark email as verified in Appwrite ---
-      await users.updateEmailVerification(userId, true);
-      await users.updateLabels(userId, ["emailVerified", "active"]);
+      await appwrite.users.updateEmailVerification(userId, true);
+      await appwrite.users.updateLabels(userId, ["emailVerified", "active"]);
 
       // Update profile document
       try {
-        await db.updateDocument(
+        await appwrite.db.updateDocument(
           config.database.appwrite.databaseId,
           config.database.appwrite.userCollectionId,
           userId,
@@ -908,7 +909,7 @@ class AuthController {
       return;
     }
 
-    await db.createDocument(
+    await appwrite.db.createDocument(
       config.database.appwrite.databaseId,
       collectionId,
       ID.unique(),
@@ -998,9 +999,9 @@ class AuthController {
       let users_list;
       try {
         users_list = await withTimeout(
-          users.list([Query.equal("email", email)]),
+          appwrite.users.list([Query.equal("email", email)]),
           10000,
-          "Appwrite users.list",
+          "Appwrite appwrite.users.list",
         );
       } catch {
         throw new ValidationError("User not found");
@@ -1050,12 +1051,12 @@ class AuthController {
       }
 
       // Mark email as verified
-      await users.updateEmailVerification(userId, true);
-      await users.updateLabels(userId, ["emailVerified", "active"]);
+      await appwrite.users.updateEmailVerification(userId, true);
+      await appwrite.users.updateLabels(userId, ["emailVerified", "active"]);
 
       // Update profile document
       try {
-        await db.updateDocument(
+        await appwrite.db.updateDocument(
           config.database.appwrite.databaseId,
           config.database.appwrite.userCollectionId,
           userId,
@@ -1115,9 +1116,9 @@ class AuthController {
       let users_list;
       try {
         users_list = await withTimeout(
-          users.list([Query.equal("email", email)]),
+          appwrite.users.list([Query.equal("email", email)]),
           10000,
-          "Appwrite users.list",
+          "Appwrite appwrite.users.list",
         );
       } catch {
         throw new ValidationError("User not found");
@@ -1391,9 +1392,9 @@ class AuthController {
   async incrementFailedAttempts(userId) {
     try {
       const userDetails = await withTimeout(
-        users.get(userId),
+        appwrite.users.get(userId),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
       const LOCKOUT_THRESHOLD = 5;
       const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
@@ -1432,9 +1433,9 @@ class AuthController {
   async resetFailedAttempts(userId) {
     try {
       const userDetails = await withTimeout(
-        users.get(userId),
+        appwrite.users.get(userId),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
       if (userDetails.prefs?.failedLogins) {
         await mergePrefs(userId, {
@@ -1454,9 +1455,9 @@ class AuthController {
   async isTrustedDevice(userId, deviceFingerprint) {
     try {
       const userDetails = await withTimeout(
-        users.get(userId),
+        appwrite.users.get(userId),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
       const raw = userDetails.prefs?.trustedDevices;
       if (!raw) return false;
@@ -1474,9 +1475,9 @@ class AuthController {
   async trustDevice(userId, deviceFingerprint, userAgent, ipAddress) {
     try {
       const userDetails = await withTimeout(
-        users.get(userId),
+        appwrite.users.get(userId),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
       let devices = [];
       try {
@@ -1528,9 +1529,9 @@ class AuthController {
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 min
 
     const userDetails = await withTimeout(
-      users.get(userId),
+      appwrite.users.get(userId),
       10000,
-      "Appwrite users.get",
+      "Appwrite appwrite.users.get",
     );
     await mergePrefs(userId, {
       mfaOtpHash: otpHash,
@@ -1553,9 +1554,9 @@ class AuthController {
 
   async verifyMFACode(userId, mfaCode) {
     const userDetails = await withTimeout(
-      users.get(userId),
+      appwrite.users.get(userId),
       10000,
-      "Appwrite users.get",
+      "Appwrite appwrite.users.get",
     );
 
     // --- 1. TOTP authenticator app (preferred when enabled) ---
@@ -1608,9 +1609,9 @@ class AuthController {
 
       // Fetch full user details from Appwrite
       const userDetails = await withTimeout(
-        users.get(user.id),
+        appwrite.users.get(user.id),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
 
       if (userDetails.emailVerification) {
@@ -1667,9 +1668,9 @@ class AuthController {
       }
 
       const userList = await withTimeout(
-        users.list([Query.equal("email", email)]),
+        appwrite.users.list([Query.equal("email", email)]),
         10000,
-        "Appwrite users.list",
+        "Appwrite appwrite.users.list",
       );
 
       // If user exists and is not yet verified, issue a fresh token
@@ -1729,9 +1730,9 @@ class AuthController {
       const { user } = req;
       if (!user) throw new AuthenticationError("Not authenticated");
       const userDetails = await withTimeout(
-        users.get(user.id),
+        appwrite.users.get(user.id),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
       res.success(
         {
@@ -1801,9 +1802,9 @@ class AuthController {
 
       // --- 2. Find or create user ---
       const existingList = await withTimeout(
-        users.list([Query.equal("email", email)]),
+        appwrite.users.list([Query.equal("email", email)]),
         10000,
-        "Appwrite users.list",
+        "Appwrite appwrite.users.list",
       );
 
       let user;
@@ -1815,7 +1816,7 @@ class AuthController {
         user = existingList.users[0];
 
         try {
-          userProfile = await db.getDocument(
+          userProfile = await appwrite.db.getDocument(
             config.database.appwrite.databaseId,
             config.database.appwrite.userCollectionId,
             user.$id,
@@ -1840,7 +1841,7 @@ class AuthController {
 
         // Ensure email is marked verified — Google guarantees it
         if (!user.emailVerification) {
-          await users.updateEmailVerification(user.$id, true);
+          await appwrite.users.updateEmailVerification(user.$id, true);
         }
       } else {
         // — New user: create account without a password (Google-only sign-in)
@@ -1851,7 +1852,7 @@ class AuthController {
         // Create Appwrite user (pass undefined password — Appwrite accepts it)
         const randomPassword = crypto.randomBytes(32).toString("hex");
         user = await withTimeout(
-          users.create(
+          appwrite.users.create(
             userId,
             email,
             undefined,
@@ -1859,12 +1860,12 @@ class AuthController {
             fullName || `${firstName} ${lastName}`.trim(),
           ),
           10000,
-          "Appwrite users.create",
+          "Appwrite appwrite.users.create",
         );
 
         // Mark email verified (Google guarantees it) and set role label
-        await users.updateEmailVerification(userId, true);
-        await users.updateLabels(userId, ["user", "emailVerified", "active"]);
+        await appwrite.users.updateEmailVerification(userId, true);
+        await appwrite.users.updateLabels(userId, ["user", "emailVerified", "active"]);
         await mergePrefs(userId, {
           googleId,
           oauthAccount: true,
@@ -1898,7 +1899,7 @@ class AuthController {
           mfaEnabled: false,
         };
 
-        await db.createDocument(
+        await appwrite.db.createDocument(
           config.database.appwrite.databaseId,
           config.database.appwrite.userCollectionId,
           userId,
@@ -2092,9 +2093,9 @@ class AuthController {
 
       // --- 3. Find or create user ---
       const existingList = await withTimeout(
-        users.list([Query.equal("email", email)]),
+        appwrite.users.list([Query.equal("email", email)]),
         10000,
-        "Appwrite users.list",
+        "Appwrite appwrite.users.list",
       );
 
       let user;
@@ -2105,7 +2106,7 @@ class AuthController {
         user = existingList.users[0];
 
         try {
-          userProfile = await db.getDocument(
+          userProfile = await appwrite.db.getDocument(
             config.database.appwrite.databaseId,
             config.database.appwrite.userCollectionId,
             user.$id,
@@ -2129,7 +2130,7 @@ class AuthController {
         // Facebook does not provide email_verified — mark email verified
         // only if the Appwrite account was created via Facebook (no password)
         if (!user.emailVerification && !user.prefs?.passwordHash) {
-          await users.updateEmailVerification(user.$id, true);
+          await appwrite.users.updateEmailVerification(user.$id, true);
         }
       } else {
         isNewUser = true;
@@ -2138,7 +2139,7 @@ class AuthController {
 
         const fbRandomPassword = crypto.randomBytes(32).toString("hex");
         user = await withTimeout(
-          users.create(
+          appwrite.users.create(
             userId,
             email,
             undefined,
@@ -2146,12 +2147,12 @@ class AuthController {
             fullName || `${firstName} ${lastName}`.trim(),
           ),
           10000,
-          "Appwrite users.create",
+          "Appwrite appwrite.users.create",
         );
 
         // Facebook is a trusted email source — mark as verified
-        await users.updateEmailVerification(userId, true);
-        await users.updateLabels(userId, ["user", "emailVerified", "active"]);
+        await appwrite.users.updateEmailVerification(userId, true);
+        await appwrite.users.updateLabels(userId, ["user", "emailVerified", "active"]);
         await mergePrefs(userId, {
           facebookId,
           oauthAccount: true,
@@ -2184,7 +2185,7 @@ class AuthController {
           mfaEnabled: false,
         };
 
-        await db.createDocument(
+        await appwrite.db.createDocument(
           config.database.appwrite.databaseId,
           config.database.appwrite.userCollectionId,
           userId,
@@ -2295,9 +2296,9 @@ class AuthController {
       let user;
       try {
         user = await withTimeout(
-          users.get(userId),
+          appwrite.users.get(userId),
           10000,
-          "Appwrite users.get",
+          "Appwrite appwrite.users.get",
         );
       } catch {
         throw new ValidationError("Invalid or expired reset token.");
@@ -2339,7 +2340,7 @@ class AuthController {
       }
 
       // Update password — Appwrite hashes internally
-      await users.updatePassword(userId, password);
+      await appwrite.users.updatePassword(userId, password);
       // Keep bcrypt copy in sync so login's bcrypt.compare still works
       const newHash = await bcrypt.hash(password, 12);
       // V-008: Increment tokenVersion to invalidate ALL existing tokens
@@ -2372,9 +2373,9 @@ class AuthController {
       const { user } = req;
       const { currentPassword, newPassword } = req.body;
       const userDetails = await withTimeout(
-        users.get(user.id),
+        appwrite.users.get(user.id),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
       // Verify against our bcrypt copy — Appwrite does not expose its hash
       const storedHash = userDetails.prefs?.passwordHash;
@@ -2385,7 +2386,7 @@ class AuthController {
         throw new AuthenticationError("Current password is incorrect.");
 
       // Update password in Appwrite (plain — Appwrite hashes internally)
-      await users.updatePassword(user.id, newPassword);
+      await appwrite.users.updatePassword(user.id, newPassword);
       // Keep bcrypt copy in sync
       const newHash = await bcrypt.hash(newPassword, 12);
       await mergePrefs(user.id, { passwordHash: newHash });
@@ -2406,15 +2407,15 @@ class AuthController {
     try {
       const { user } = req;
       const userDetails = await withTimeout(
-        users.get(user.id),
+        appwrite.users.get(user.id),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
 
       if (userDetails.prefs?.totpEnabled) {
         return res.success(
           { alreadyEnabled: true },
-          "Two-factor authentication is already active on this account.",
+          "Two-factor authentication is already active on this appwrite.account.",
         );
       }
 
@@ -2455,9 +2456,9 @@ class AuthController {
       const { code } = req.body;
 
       const userDetails = await withTimeout(
-        users.get(user.id),
+        appwrite.users.get(user.id),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
 
       const encPending = userDetails.prefs?.totpSecretPending;
@@ -2500,7 +2501,7 @@ class AuthController {
         });
         // Reflect in profile document
         try {
-          await db.updateDocument(
+          await appwrite.db.updateDocument(
             config.database.appwrite.databaseId,
             config.database.appwrite.userCollectionId,
             user.id,
@@ -2547,13 +2548,13 @@ class AuthController {
       const { code, password } = req.body;
 
       const userDetails = await withTimeout(
-        users.get(user.id),
+        appwrite.users.get(user.id),
         10000,
-        "Appwrite users.get",
+        "Appwrite appwrite.users.get",
       );
 
       if (!userDetails.prefs?.totpEnabled || !userDetails.prefs?.totpSecret) {
-        return res.success(null, "2FA is not enabled on this account.");
+        return res.success(null, "2FA is not enabled on this appwrite.account.");
       }
 
       // Require the current account password as an extra guard against
@@ -2593,7 +2594,7 @@ class AuthController {
         trustedDevices: null,
       });
       try {
-        await db.updateDocument(
+        await appwrite.db.updateDocument(
           config.database.appwrite.databaseId,
           config.database.appwrite.userCollectionId,
           user.id,
@@ -2618,9 +2619,9 @@ class AuthController {
     try {
       const { email } = req.body;
       const userList = await withTimeout(
-        users.list([Query.equal("email", email)]),
+        appwrite.users.list([Query.equal("email", email)]),
         10000,
-        "Appwrite users.list",
+        "Appwrite appwrite.users.list",
       );
 
       // Explicitly tell the user when no account is found — avoids the
@@ -2649,7 +2650,7 @@ class AuthController {
           error: {
             code: "OAUTH_ACCOUNT",
             message:
-              "This account was created with Google or Facebook sign-in and does not have a password. Please sign in with your social account.",
+              "This account was created with Google or Facebook sign-in and does not have a password. Please sign in with your social appwrite.account.",
           },
         });
         return;
