@@ -235,7 +235,33 @@ module.exports = {
   validateForgotPassword: validatePasswordResetRequest,
   validateResetPassword: validatePasswordReset,
   validateChangePassword: validateLogin, // password + auth fields — reuse login validation
-  validateProfileUpdate: [], // no strict validation needed; controller validates fields
+  validateProfileUpdate: [
+  body("firstName")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage("First name must be between 2 and 50 characters")
+    .matches(/^[a-zA-Z\s'-]+$/)
+    .withMessage("First name can only contain letters, spaces, hyphens, and apostrophes"),
+  body("lastName")
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 50 })
+    .withMessage("Last name must be between 2 and 50 characters")
+    .matches(/^[a-zA-Z\s'-]+$/)
+    .withMessage("Last name can only contain letters, spaces, hyphens, and apostrophes"),
+  body("phone")
+    .optional()
+    .isMobilePhone("any", { strictMode: false })
+    .withMessage("Please provide a valid phone number"),
+  body("country")
+    .optional()
+    .isLength({ min: 2, max: 3 })
+    .withMessage("Country code must be 2-3 characters")
+    .isAlpha()
+    .withMessage("Country code must contain only letters"),
+  validateRequest,
+],
   validateMFA: validateMFAVerification,
   validateMFADisable: validateMFAVerification,
 };

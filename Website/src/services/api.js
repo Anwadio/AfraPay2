@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 const api = axios.create({
   baseURL:
     process.env.REACT_APP_API_BASE_URL ||
-    "https://afra-pay-backend.onrender.com/api/v1",
+    "https://afra-pay-backend-jnlv.onrender.com/api/v1",
   timeout: 30000, // 30 seconds
   headers: {
     "Content-Type": "application/json",
@@ -75,7 +75,7 @@ api.interceptors.response.use(
             config._retry = true;
             try {
               await axios.post(
-                `${process.env.REACT_APP_API_BASE_URL || "https://afra-pay-backend.onrender.com/api/v1"}/auth/refresh-token`,
+                `${process.env.REACT_APP_API_BASE_URL || "https://afra-pay-backend-jnlv.onrender.com/api/v1"}/auth/refresh-token`,
                 {},
                 { withCredentials: true },
               );

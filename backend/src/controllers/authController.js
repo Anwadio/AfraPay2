@@ -132,15 +132,7 @@ class AuthController {
         );
       }
 
-      // Step 1: Check if user already exists
-      const existingUsers = await withTimeout(
-        users.list([Query.equal("email", email)]),
-        10000,
-        "Appwrite users.list",
-      );
-      if (existingUsers.total > 0) {
-        throw new ConflictError("User with this email already exists");
-      }
+      // Step 1: Removed pre-check — let Appwrite handle duplicate detection atomically (V-025)
 
       // Step 2: KYC Level 0 - Basic identity verification
       const kycLevel0Result = await this.performKYCLevel0({
@@ -169,13 +161,20 @@ class AuthController {
       //          we keep our own bcrypt hash in prefs to avoid double-hash mismatch on login)
       logger.debug("Creating user in Appwrite");
       const userId = ID.unique();
-      const user = await users.create(
-        userId,
-        email,
-        phone,
-        password,
-        `${firstName} ${lastName}`,
-      );
+      const try {
+        user = await users.create(
+          userId,
+          email,
+          phone,
+          password,
+          `${firstName} ${lastName}`,
+        );
+      } catch (createError) {
+        if (createError.type === "user_already_exists" || createError.code === 409) {
+          throw new ConflictError("This email is already registered. Please log in instead.");
+        }
+        throw createError;
+      }
 
       logger.debug("Appwrite user created", { userId });
 
@@ -727,14 +726,23 @@ class AuthController {
       // the in-memory session store is not reliable across server restarts in development.
       const user = await users.get(decoded.sub);
 
+      // V-005: Check token version
+      const currentVersion = parseInt(user.prefs?.tokenVersion || 0, 10);
+      const tokenVersion = parseInt(decoded.version || 0, 10);
+      if (tokenVersion < currentVersion) {
+        await addToBlacklist(decoded, refreshToken);
+        await mergePrefs(decoded.sub, { tokenVersion: currentVersion + 1 });
+        throw new AuthenticationError("Session has been invalidated. Please log in again.");
+      }
+
       // Optionally update session activity if session still exists in memory
       const session = await this.getSession(decoded.sessionId);
       if (session) {
         await this.updateSessionActivity(decoded.sessionId);
       }
 
-      // Generate new tokens
-      const tokens = await this.generateTokens(user, decoded.sessionId);
+      // Generate new tokens with req
+      const tokens = await this.generateTokens(user, decoded.sessionId, null, false, req);
 
       // Blacklist the consumed refresh token to prevent replay attacks
       await addToBlacklist(decoded, refreshToken);
@@ -1114,6 +1122,11 @@ class AuthController {
       const codeExpiry = new Date(Date.now() + 10 * 60 * 1000).toISOString(); // 10 minutes
 
       // Store code hash in prefs
+      // V-006: Invalidate old code first
+      await mergePrefs(userId, {
+        emailVerificationCodeHash: null,
+        emailVerificationCodeExpiry: null,
+      });
       await mergePrefs(userId, {
         emailVerificationCodeHash: codeHash,
         emailVerificationCodeExpiry: codeExpiry,
@@ -1155,13 +1168,17 @@ class AuthController {
     const accessJti = crypto.randomUUID();
     const refreshJti = crypto.randomUUID();
 
+    const version = parseInt(user.prefs?.tokenVersion || 0, 10);
+    const deviceHash = req
+      ? crypto.createHash("sha256").update(req.get("User-Agent") || "").digest("hex").substring(0, 16)
+      : "";
+
     const accessTokenPayload = {
       sub: user.$id,
       jti: accessJti,
       iss: config.app.name,
       aud: "afrapay-client",
       type: "access",
-      email: user.email,
       role: userProfile?.role || "user",
       permissions: (() => {
         try {
@@ -1173,6 +1190,8 @@ class AuthController {
       sessionId,
       kycLevel: parseInt(userProfile?.kycLevel ?? 0),
       mfaVerified,
+      version,
+      deviceHash,
     };
 
     const refreshTokenPayload = {
@@ -1180,6 +1199,7 @@ class AuthController {
       jti: refreshJti,
       type: "refresh",
       sessionId,
+      version,
     };
 
     const accessToken = jwt.sign(
@@ -1358,7 +1378,18 @@ class AuthController {
           ? new Date(Date.now() + LOCKOUT_DURATION_MS).toISOString()
           : userDetails.prefs?.lockoutUntil || null;
 
-      await mergePrefs(userId, { failedLogins: attempts, lockoutUntil });
+      const updates = { failedLogins: attempts, lockoutUntil };
+
+      // V-020: Invalidate all sessions and tokens when account is locked
+      if (attempts >= LOCKOUT_THRESHOLD) {
+        for (const [sid, session] of activeSessions.entries()) {
+          if (session.userId === userId) activeSessions.delete(sid);
+        }
+        const currentVer = parseInt(userDetails.prefs?.tokenVersion || 0, 10);
+        updates.tokenVersion = currentVer + 1;
+      }
+
+      await mergePrefs(userId, updates);
       logger.warn("Failed login attempt recorded", {
         userId,
         attempts,
@@ -1535,10 +1566,8 @@ class AuthController {
     if (storedBuf.length !== incomingBuf.length) return false;
 
     const valid = crypto.timingSafeEqual(storedBuf, incomingBuf);
-    if (valid) {
-      // Consume the OTP — prevents replay attacks
-      await mergePrefs(userId, { mfaOtpHash: null, mfaOtpExpiry: null });
-    }
+    // V-007: ALWAYS consume the OTP after any attempt — prevents brute-force
+    await mergePrefs(userId, { mfaOtpHash: null, mfaOtpExpiry: null });
     return valid;
   }
 
@@ -1630,6 +1659,11 @@ class AuthController {
             Date.now() + 24 * 60 * 60 * 1000,
           ).toISOString();
 
+          // V-006: Invalidate old link first
+          await mergePrefs(user.$id, {
+            emailVerificationHash: null,
+            emailVerificationExpiry: null,
+          });
           await mergePrefs(user.$id, {
             emailVerificationHash: tokenHash,
             emailVerificationExpiry,
@@ -1789,12 +1823,13 @@ class AuthController {
         const lastName = lastNameRaw || "";
 
         // Create Appwrite user (pass undefined password — Appwrite accepts it)
+        const randomPassword = crypto.randomBytes(32).toString("hex");
         user = await withTimeout(
           users.create(
             userId,
             email,
             undefined,
-            undefined,
+            randomPassword,
             fullName || `${firstName} ${lastName}`.trim(),
           ),
           10000,
@@ -1804,7 +1839,7 @@ class AuthController {
         // Mark email verified (Google guarantees it) and set role label
         await users.updateEmailVerification(userId, true);
         await users.updateLabels(userId, ["user", "emailVerified", "active"]);
-        await mergePrefs(userId, { googleId });
+        await mergePrefs(userId, { googleId, oauthAccount: true, oauthProvider: "google" });
 
         // Create profile document
         const userData = {
@@ -2071,12 +2106,13 @@ class AuthController {
         const userId = ID.unique();
         const lastName = lastNameRaw || "";
 
+        const fbRandomPassword = crypto.randomBytes(32).toString("hex");
         user = await withTimeout(
           users.create(
             userId,
             email,
             undefined,
-            undefined,
+            fbRandomPassword,
             fullName || `${firstName} ${lastName}`.trim(),
           ),
           10000,
@@ -2086,7 +2122,7 @@ class AuthController {
         // Facebook is a trusted email source — mark as verified
         await users.updateEmailVerification(userId, true);
         await users.updateLabels(userId, ["user", "emailVerified", "active"]);
-        await mergePrefs(userId, { facebookId });
+        await mergePrefs(userId, { facebookId, oauthAccount: true, oauthProvider: "facebook" });
 
         const userData = {
           userId,
@@ -2272,14 +2308,16 @@ class AuthController {
       await users.updatePassword(userId, password);
       // Keep bcrypt copy in sync so login's bcrypt.compare still works
       const newHash = await bcrypt.hash(password, 12);
+      // V-008: Increment tokenVersion to invalidate ALL existing tokens
+      const currentTokenVersion = parseInt(user.prefs?.tokenVersion || 0, 10);
       await mergePrefs(userId, {
         passwordHash: newHash,
         passwordResetHash: null,
         passwordResetExpiry: null,
+        tokenVersion: currentTokenVersion + 1,
       });
 
-      // Invalidate all in-process sessions for this user so old sessions
-      // cannot be reused after a password change.
+      // Invalidate all in-process sessions for this user
       for (const [sessionId, session] of activeSessions.entries()) {
         if (session.userId === userId) activeSessions.delete(sessionId);
       }
@@ -2557,14 +2595,9 @@ class AuthController {
       // B2C fintech app, email addresses are not considered sensitive enough
       // to justify silently swallowing this error.
       if (userList.total === 0) {
-        res.status(404).json({
-          success: false,
-          error: {
-            code: "USER_NOT_FOUND",
-            message:
-              "No account found with that email address. Please check the email and try again.",
-          },
-        });
+        // V-010: Always return success to prevent email enumeration
+        logger.security("Password reset requested for non-existent email", { email });
+        res.success(null, "If that email is registered, a password reset link has been sent. Please check your inbox.");
         return;
       }
 
