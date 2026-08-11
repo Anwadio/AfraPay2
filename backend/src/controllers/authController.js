@@ -161,7 +161,8 @@ class AuthController {
       //          we keep our own bcrypt hash in prefs to avoid double-hash mismatch on login)
       logger.debug("Creating user in Appwrite");
       const userId = ID.unique();
-      const try {
+      let user;
+      try {
         user = await users.create(
           userId,
           email,
@@ -170,8 +171,13 @@ class AuthController {
           `${firstName} ${lastName}`,
         );
       } catch (createError) {
-        if (createError.type === "user_already_exists" || createError.code === 409) {
-          throw new ConflictError("This email is already registered. Please log in instead.");
+        if (
+          createError.type === "user_already_exists" ||
+          createError.code === 409
+        ) {
+          throw new ConflictError(
+            "This email is already registered. Please log in instead.",
+          );
         }
         throw createError;
       }
@@ -732,7 +738,9 @@ class AuthController {
       if (tokenVersion < currentVersion) {
         await addToBlacklist(decoded, refreshToken);
         await mergePrefs(decoded.sub, { tokenVersion: currentVersion + 1 });
-        throw new AuthenticationError("Session has been invalidated. Please log in again.");
+        throw new AuthenticationError(
+          "Session has been invalidated. Please log in again.",
+        );
       }
 
       // Optionally update session activity if session still exists in memory
@@ -742,7 +750,13 @@ class AuthController {
       }
 
       // Generate new tokens with req
-      const tokens = await this.generateTokens(user, decoded.sessionId, null, false, req);
+      const tokens = await this.generateTokens(
+        user,
+        decoded.sessionId,
+        null,
+        false,
+        req,
+      );
 
       // Blacklist the consumed refresh token to prevent replay attacks
       await addToBlacklist(decoded, refreshToken);
@@ -1170,7 +1184,11 @@ class AuthController {
 
     const version = parseInt(user.prefs?.tokenVersion || 0, 10);
     const deviceHash = req
-      ? crypto.createHash("sha256").update(req.get("User-Agent") || "").digest("hex").substring(0, 16)
+      ? crypto
+          .createHash("sha256")
+          .update(req.get("User-Agent") || "")
+          .digest("hex")
+          .substring(0, 16)
       : "";
 
     const accessTokenPayload = {
@@ -1839,7 +1857,11 @@ class AuthController {
         // Mark email verified (Google guarantees it) and set role label
         await users.updateEmailVerification(userId, true);
         await users.updateLabels(userId, ["user", "emailVerified", "active"]);
-        await mergePrefs(userId, { googleId, oauthAccount: true, oauthProvider: "google" });
+        await mergePrefs(userId, {
+          googleId,
+          oauthAccount: true,
+          oauthProvider: "google",
+        });
 
         // Create profile document
         const userData = {
@@ -2122,7 +2144,11 @@ class AuthController {
         // Facebook is a trusted email source — mark as verified
         await users.updateEmailVerification(userId, true);
         await users.updateLabels(userId, ["user", "emailVerified", "active"]);
-        await mergePrefs(userId, { facebookId, oauthAccount: true, oauthProvider: "facebook" });
+        await mergePrefs(userId, {
+          facebookId,
+          oauthAccount: true,
+          oauthProvider: "facebook",
+        });
 
         const userData = {
           userId,
@@ -2596,8 +2622,13 @@ class AuthController {
       // to justify silently swallowing this error.
       if (userList.total === 0) {
         // V-010: Always return success to prevent email enumeration
-        logger.security("Password reset requested for non-existent email", { email });
-        res.success(null, "If that email is registered, a password reset link has been sent. Please check your inbox.");
+        logger.security("Password reset requested for non-existent email", {
+          email,
+        });
+        res.success(
+          null,
+          "If that email is registered, a password reset link has been sent. Please check your inbox.",
+        );
         return;
       }
 
