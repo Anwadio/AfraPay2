@@ -89,6 +89,21 @@ function withTimeout(promise, ms = 10000, label = "Operation") {
   return Promise.race([promise, timeout]);
 }
 
+function normalizeEmailAddress(email) {
+  return String(email || "")
+    .trim()
+    .toLowerCase();
+}
+
+function getAppwriteProjectMeta() {
+  return {
+    endpoint: config.database?.appwrite?.endpoint || "unknown",
+    projectId: config.database?.appwrite?.projectId || "unknown",
+    databaseId: config.database?.appwrite?.databaseId || "unknown",
+    userCollectionId: config.database?.appwrite?.userCollectionId || "unknown",
+  };
+}
+
 /**
  * Safe prefs update — Appwrite's updatePrefs REPLACES the entire prefs object,
  * so we must always read–merge–write to avoid wiping unrelated keys
@@ -100,7 +115,10 @@ async function mergePrefs(userId, updates) {
     10000,
     "Appwrite appwrite.users.get (mergePrefs)",
   );
-  return appwrite.users.updatePrefs(userId, { ...(current.prefs || {}), ...updates });
+  return appwrite.users.updatePrefs(userId, {
+    ...(current.prefs || {}),
+    ...updates,
+  });
 }
 
 class AuthController {
@@ -125,6 +143,8 @@ class AuthController {
       marketingAccepted,
     } = req.body;
 
+    const normalizedEmail = normalizeEmailAddress(email);
+
     try {
       // Must agree to Terms before we do anything
       if (!termsAccepted) {
@@ -133,11 +153,42 @@ class AuthController {
         );
       }
 
-      // Step 1: Removed pre-check — let Appwrite handle duplicate detection atomically (V-025)
+      // Step 1: Pre-check account existence with normalized email to catch
+      // duplicate cases and to detect project mismatches earlier.
+      try {
+        const existingUsers = await withTimeout(
+          appwrite.users.list([Query.equal("email", normalizedEmail)]),
+          10000,
+          "Appwrite appwrite.users.list (register pre-check)",
+        );
+
+        if (existingUsers.total > 0) {
+          logger.warn("Duplicate registration pre-check hit", {
+            email: normalizedEmail,
+            appwrite: getAppwriteProjectMeta(),
+            existingUserCount: existingUsers.total,
+          });
+          throw new ConflictError(
+            "This email is already registered. Please log in instead.",
+          );
+        }
+      } catch (precheckError) {
+        if (precheckError instanceof ConflictError) {
+          throw precheckError;
+        }
+        logger.warn(
+          "Registration pre-check failed; continuing to Appwrite create",
+          {
+            email: normalizedEmail,
+            message: precheckError.message,
+            appwrite: getAppwriteProjectMeta(),
+          },
+        );
+      }
 
       // Step 2: KYC Level 0 - Basic identity verification
       const kycLevel0Result = await this.performKYCLevel0({
-        email,
+        email: normalizedEmail,
         firstName,
         lastName,
         phone,
@@ -160,18 +211,29 @@ class AuthController {
 
       // Step 4: Create user in Appwrite (pass plain password — Appwrite hashes it internally;
       //          we keep our own bcrypt hash in prefs to avoid double-hash mismatch on login)
-      logger.debug("Creating user in Appwrite");
+      logger.debug("Creating user in Appwrite", {
+        email: normalizedEmail,
+        appwrite: getAppwriteProjectMeta(),
+      });
       const userId = ID.unique();
       let user;
       try {
         user = await appwrite.users.create(
           userId,
-          email,
+          normalizedEmail,
           phone,
           password,
           `${firstName} ${lastName}`,
         );
       } catch (createError) {
+        logger.error("Appwrite user creation failed", {
+          email: normalizedEmail,
+          appwrite: getAppwriteProjectMeta(),
+          errorType: createError.type,
+          errorCode: createError.code,
+          errorMessage: createError.message,
+        });
+
         if (
           createError.type === "user_already_exists" ||
           createError.code === 409
@@ -1865,7 +1927,11 @@ class AuthController {
 
         // Mark email verified (Google guarantees it) and set role label
         await appwrite.users.updateEmailVerification(userId, true);
-        await appwrite.users.updateLabels(userId, ["user", "emailVerified", "active"]);
+        await appwrite.users.updateLabels(userId, [
+          "user",
+          "emailVerified",
+          "active",
+        ]);
         await mergePrefs(userId, {
           googleId,
           oauthAccount: true,
@@ -2152,7 +2218,11 @@ class AuthController {
 
         // Facebook is a trusted email source — mark as verified
         await appwrite.users.updateEmailVerification(userId, true);
-        await appwrite.users.updateLabels(userId, ["user", "emailVerified", "active"]);
+        await appwrite.users.updateLabels(userId, [
+          "user",
+          "emailVerified",
+          "active",
+        ]);
         await mergePrefs(userId, {
           facebookId,
           oauthAccount: true,
@@ -2554,7 +2624,10 @@ class AuthController {
       );
 
       if (!userDetails.prefs?.totpEnabled || !userDetails.prefs?.totpSecret) {
-        return res.success(null, "2FA is not enabled on this appwrite.account.");
+        return res.success(
+          null,
+          "2FA is not enabled on this appwrite.account.",
+        );
       }
 
       // Require the current account password as an extra guard against
