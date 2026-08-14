@@ -111,6 +111,8 @@ class AuthController {
     logger.debug("Registration request received", {
       email: req.body?.email,
       ip: req?.ip,
+      appwriteEndpoint: config.database.appwrite.endpoint,
+      appwriteProjectId: config.database.appwrite.projectId,
     });
     const {
       email,
