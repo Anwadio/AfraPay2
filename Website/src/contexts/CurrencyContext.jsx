@@ -23,6 +23,7 @@ import React, {
   useMemo,
 } from "react";
 import { userAPI } from "../services/api";
+import { useAuth } from "./AuthContext";
 import { getCurrencyByCountry, getCurrencyMeta } from "../utils/currency";
 
 const STORAGE_KEY = "afrapay_currency";
