@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { authAPI } from "../../services/api";
 
 const STATUS = {
@@ -12,15 +12,23 @@ const STATUS = {
 };
 
 const VerifyEmail = () => {
-  const { token } = useParams();
+  const { token: pathToken } = useParams();
+  const [searchParams] = useSearchParams();
+  const queryToken = searchParams.get("token");
+  
+  // Token can come from either path parameter or query parameter
+  const token = pathToken || queryToken;
   const [status, setStatus] = useState(STATUS.LOADING);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    console.log("[VerifyEmail] Component mounted, token from URL:", token);
+    console.log("[VerifyEmail] Component mounted");
+    console.log("[VerifyEmail] Token from path:", pathToken);
+    console.log("[VerifyEmail] Token from query:", queryToken);
+    console.log("[VerifyEmail] Final token:", token);
 
     if (!token) {
-      console.error("[VerifyEmail] No token found in URL params");
+      console.error("[VerifyEmail] No token found in URL");
       setStatus(STATUS.INVALID);
       setMessage(
         "No verification token found. Please use the link from your email.",
@@ -68,7 +76,7 @@ const VerifyEmail = () => {
           );
         }
       });
-  }, [token]);
+  }, [token, pathToken, queryToken]);
 
   return (
     <div className="space-y-6">

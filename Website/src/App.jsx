@@ -186,6 +186,11 @@ function App() {
                         path="reset-password/confirm"
                         element={<ResetPasswordConfirm />}
                       />
+                      {/* Verify email - supports both path param and query param for compatibility */}
+                      <Route
+                        path="verify-email"
+                        element={<VerifyEmail />}
+                      />
                       <Route
                         path="verify-email/:token"
                         element={<VerifyEmail />}
