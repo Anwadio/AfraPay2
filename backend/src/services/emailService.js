@@ -21,7 +21,8 @@ const APP_URL = config.external.appUrl || "https://www.afrapayafrica.com";
 async function sendVerificationEmail(email, verificationToken, firstName) {
   // Link goes to the frontend verification page which calls the backend API.
   // APP_URL is the public frontend URL (e.g. https://www.afrapayafrica.com in production).
-  const verifyUrl = `${APP_URL}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
+  // Token is in URL path for cleaner routing and better UX.
+  const verifyUrl = `${APP_URL}/auth/verify-email/${encodeURIComponent(verificationToken)}`;
 
   const { data, error } = await resend.emails.send({
     from: FROM,

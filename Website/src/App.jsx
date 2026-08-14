@@ -186,7 +186,14 @@ function App() {
                         path="reset-password/confirm"
                         element={<ResetPasswordConfirm />}
                       />
-                      <Route path="verify-email" element={<VerifyEmail />} />
+                      <Route
+                        path="verify-email/:token"
+                        element={
+                          <PublicRoute>
+                            <VerifyEmail />
+                          </PublicRoute>
+                        }
+                      />
                     </Route>
 
                     {/* Legacy auth routes (redirect to new paths) */}

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { authAPI } from "../../services/api";
 
 const STATUS = {
@@ -12,13 +12,11 @@ const STATUS = {
 };
 
 const VerifyEmail = () => {
-  const [searchParams] = useSearchParams();
+  const { token } = useParams();
   const [status, setStatus] = useState(STATUS.LOADING);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    const token = searchParams.get("token");
-
     if (!token) {
       setStatus(STATUS.INVALID);
       setMessage(
@@ -63,7 +61,7 @@ const VerifyEmail = () => {
           );
         }
       });
-  }, [searchParams]);
+  }, [token]);
 
   return (
     <div className="space-y-6">
