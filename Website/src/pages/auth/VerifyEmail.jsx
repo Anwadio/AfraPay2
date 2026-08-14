@@ -22,13 +22,7 @@ const VerifyEmail = () => {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    console.log("[VerifyEmail] Component mounted");
-    console.log("[VerifyEmail] Token from path:", pathToken);
-    console.log("[VerifyEmail] Token from query:", queryToken);
-    console.log("[VerifyEmail] Final token:", token);
-
     if (!token) {
-      console.error("[VerifyEmail] No token found in URL");
       setStatus(STATUS.INVALID);
       setMessage(
         "No verification token found. Please use the link from your email.",
@@ -36,16 +30,12 @@ const VerifyEmail = () => {
       return;
     }
 
-    console.log("[VerifyEmail] Starting verification with token:", token);
-
     authAPI
       .verifyEmail(token)
       .then(() => {
-        console.log("[VerifyEmail] Verification successful");
         setStatus(STATUS.SUCCESS);
       })
       .catch((err) => {
-        console.error("[VerifyEmail] Verification failed:", err);
         const msg = err.response?.data?.error?.message || "";
         const code = err.response?.data?.error?.code || "";
 

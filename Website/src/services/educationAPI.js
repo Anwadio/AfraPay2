@@ -270,7 +270,6 @@ export const educationAPI = {
         }
       );
     } catch (error) {
-      console.error("Failed to fetch user stats:", error);
       return {
         enrolledPaths: 0,
         completedLessons: 0,
