@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { cn } from "../../utils";
 import { DashboardSidebar } from "./DashboardSidebar";
 import { DashboardHeader } from "./DashboardHeader";
@@ -21,6 +21,7 @@ const DashboardLayout = ({
   ...props
 }) => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const previousMobileRef = useRef(window.innerWidth < 1024);
   const { t } = useTranslation();
 
   // Handle responsive behavior
@@ -28,10 +29,13 @@ const DashboardLayout = ({
     const checkIsMobile = () => {
       const mobile = window.innerWidth < 1024;
 
-      // Auto-close sidebar on mobile when resizing to mobile view
-      if (mobile && isSidebarOpen) {
+      // Only auto-close when the viewport changes from desktop to mobile.
+      // If the user is already on mobile and toggles the sidebar open, keep the state.
+      if (!previousMobileRef.current && mobile) {
         setIsSidebarOpen(false);
       }
+
+      previousMobileRef.current = mobile;
     };
 
     // Initial check
@@ -40,7 +44,7 @@ const DashboardLayout = ({
     // Listen for resize events
     window.addEventListener("resize", checkIsMobile);
     return () => window.removeEventListener("resize", checkIsMobile);
-  }, [isSidebarOpen]);
+  }, []);
 
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
