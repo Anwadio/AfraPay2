@@ -43,6 +43,8 @@ const getCreateAdminNotification = () =>
 // with a shared Redis store (the ioredis client is already wired in the project).
 // ---------------------------------------------------------------------------
 const activeSessions = new Map();
+const registrationIdempotencyStore = new Map();
+const REGISTRATION_IDEMPOTENCY_TTL_MS = 30 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // AES-256-GCM helpers — used to store TOTP secrets encrypted at rest so that
@@ -107,6 +109,60 @@ class AuthController {
    * User Registration Flow
    * Implements multi-step registration with KYC Level 0 verification
    */
+  async debugAppwriteUser(req, res) {
+    const { email, phone } = req.query || {};
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedPhone = String(phone || "").trim();
+
+    if (!normalizedEmail && !normalizedPhone) {
+      throw new ValidationError(
+        "Provide at least one of email or phone to look up the Appwrite user.",
+      );
+    }
+
+    const emailMatches = normalizedEmail
+      ? await withTimeout(
+          users.list([Query.equal("email", normalizedEmail)]),
+          10000,
+          "Appwrite users.list (email lookup)",
+        )
+      : { users: [] };
+
+    const phoneMatches = normalizedPhone
+      ? await withTimeout(
+          users.list([Query.equal("phone", normalizedPhone)]),
+          10000,
+          "Appwrite users.list (phone lookup)",
+        )
+      : { users: [] };
+
+    const merged = {};
+    for (const user of [...(emailMatches.users || []), ...(phoneMatches.users || [])]) {
+      merged[user.$id] = {
+        $id: user.$id,
+        email: user.email,
+        phone: user.phone,
+        name: user.name,
+        labels: user.labels,
+        registration: user.registration,
+        status: user.status,
+      };
+    }
+
+    return res.success(
+      {
+        projectId: config.database.appwrite.projectId,
+        endpoint: config.database.appwrite.endpoint,
+        email: normalizedEmail || null,
+        phone: normalizedPhone || null,
+        matches: Object.values(merged),
+        emailMatchesCount: emailMatches.total || 0,
+        phoneMatchesCount: phoneMatches.total || 0,
+      },
+      "Appwrite Auth lookup completed.",
+    );
+  }
+
   async register(req, res) {
     logger.debug("Registration request received", {
       email: req.body?.email,
@@ -124,7 +180,27 @@ class AuthController {
       country,
       termsAccepted,
       marketingAccepted,
+      idempotencyKey,
     } = req.body;
+
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedPhone = String(phone || "").trim();
+    const requestKey = idempotencyKey || `${normalizedEmail}:${normalizedPhone}`;
+
+    const cachedRegistration = registrationIdempotencyStore.get(requestKey);
+    if (
+      cachedRegistration &&
+      Date.now() - cachedRegistration.timestamp < REGISTRATION_IDEMPOTENCY_TTL_MS
+    ) {
+      logger.warn("Duplicate registration request suppressed", {
+        email: normalizedEmail,
+        requestKey,
+      });
+      return res.success(
+        cachedRegistration.payload,
+        "Registration already submitted. Please check your email for the verification link.",
+      );
+    }
 
     try {
       // Must agree to Terms before we do anything
@@ -134,15 +210,10 @@ class AuthController {
         );
       }
 
-      // Step 1: Check if user already exists
-      const existingUsers = await withTimeout(
-        users.list([Query.equal("email", email)]),
-        10000,
-        "Appwrite users.list",
-      );
-      if (existingUsers.total > 0) {
-        throw new ConflictError("User with this email already exists");
-      }
+      // Step 1: Do not preflight Appwrite users.list for duplicate detection.
+      // Appwrite is the source of truth for Auth uniqueness, and relying on a
+      // list query here can produce false positives or stale duplicates.
+      // The create call itself is the authoritative check.
 
       // Step 2: KYC Level 0 - Basic identity verification
       const kycLevel0Result = await this.performKYCLevel0({
@@ -171,13 +242,63 @@ class AuthController {
       //          we keep our own bcrypt hash in prefs to avoid double-hash mismatch on login)
       logger.debug("Creating user in Appwrite");
       const userId = ID.unique();
-      const user = await users.create(
-        userId,
-        email,
-        phone,
-        password,
-        `${firstName} ${lastName}`,
-      );
+      let user;
+
+      try {
+        user = await users.create(
+          userId,
+          normalizedEmail,
+          normalizedPhone,
+          password,
+          `${firstName} ${lastName}`,
+        );
+      } catch (createError) {
+        logger.warn("Appwrite user creation rejected", {
+          email: normalizedEmail,
+          phone: normalizedPhone,
+          requestKey,
+          code: createError?.code,
+          type: createError?.type,
+          message: createError?.message,
+        });
+
+        if (
+          createError?.code === 409 ||
+          createError?.type === "user_already_exists" ||
+          /already exists|duplicate/i.test(createError?.message || "")
+        ) {
+          let duplicateMessage =
+            "An account with this email or phone already exists. Please sign in or reset your password.";
+
+          if (normalizedEmail) {
+            const emailMatches = await withTimeout(
+              users.list([Query.equal("email", normalizedEmail)]),
+              10000,
+              "Appwrite users.list (duplicate email check)",
+            );
+            if ((emailMatches?.total || 0) > 0) {
+              duplicateMessage =
+                "This email is already registered to another account.";
+            }
+          }
+
+          if (!normalizedEmail || normalizedPhone) {
+            const phoneMatches = await withTimeout(
+              users.list([Query.equal("phone", normalizedPhone)]),
+              10000,
+              "Appwrite users.list (duplicate phone check)",
+            );
+            if ((phoneMatches?.total || 0) > 0) {
+              duplicateMessage =
+                "This phone number is already registered to another account.";
+            }
+          }
+
+          throw new ConflictError(duplicateMessage);
+        }
+
+        throw createError;
+      }
 
       logger.debug("Appwrite user created", { userId });
 
@@ -358,25 +479,32 @@ class AuthController {
           ).catch(() => {});
         });
 
-        res.created(
-          {
-            user: {
-              id: userId,
-              email,
-              firstName,
-              lastName,
-              phone,
-              country,
-              kycLevel: 0,
-              status: "pending_verification",
-              emailVerified: false,
-              phoneVerified: false,
-            },
-            verificationRequired: {
-              email: true,
-              phone: !!phone,
-            },
+        const responsePayload = {
+          user: {
+            id: userId,
+            email: normalizedEmail,
+            firstName,
+            lastName,
+            phone: normalizedPhone,
+            country,
+            kycLevel: 0,
+            status: "pending_verification",
+            emailVerified: false,
+            phoneVerified: false,
           },
+          verificationRequired: {
+            email: true,
+            phone: !!normalizedPhone,
+          },
+        };
+
+        registrationIdempotencyStore.set(requestKey, {
+          payload: responsePayload,
+          timestamp: Date.now(),
+        });
+
+        res.created(
+          responsePayload,
           "Registration successful. Please verify your email and phone.",
         );
       } catch (postCreateError) {
@@ -954,8 +1082,15 @@ class AuthController {
   }
 
   isMobileRequest(req) {
+    // First, check if the client explicitly declared its type
+    const clientType = req.get("X-Client-Type");
+    if (clientType === "mobile") return true;
+    if (clientType === "web") return false;
+
+    // Fallback: check User-Agent for React Native / Expo specific indicators
+    // (more reliable than generic "mobile" keyword which can be in web browsers)
     const userAgent = req.get("User-Agent") || "";
-    return /okhttp|expo|react-native|mobile|android|iphone/i.test(userAgent);
+    return /okhttp|expo|react-native/i.test(userAgent);
   }
 
   async verifyEmailCode(req, res) {

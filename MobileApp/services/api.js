@@ -26,6 +26,8 @@ api.interceptors.request.use(
     // Tell the backend which language the user has selected
     config.headers["Accept-Language"] = lang;
     config.headers["X-App-Language"] = lang;
+    // Explicitly identify this as a mobile client (Expo/React Native)
+    config.headers["X-Client-Type"] = "mobile";
     return config;
   },
   (error) => Promise.reject(error),

@@ -352,6 +352,8 @@ const config = {
         "X-Device-ID",
         "X-Request-ID",
         "X-API-Key",
+        "X-Client-Type",
+        "X-App-Language",
       ],
       credentials: true,
       maxAge: 86400, // 24 hours

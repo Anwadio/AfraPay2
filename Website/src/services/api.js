@@ -8,11 +8,11 @@
 import axios from "axios";
 import toast from "react-hot-toast";
 
+const LOCAL_API_BASE_URL = "http://localhost:5000/api/v1";
+
 // Create axios instance with default configuration
 const api = axios.create({
-  baseURL:
-    process.env.REACT_APP_API_BASE_URL ||
-    "https://afra-pay-backend-jnlv.onrender.com/api/v1",
+  baseURL: process.env.REACT_APP_API_BASE_URL || LOCAL_API_BASE_URL,
   timeout: 30000, // 30 seconds
   headers: {
     "Content-Type": "application/json",
@@ -28,6 +28,9 @@ const api = axios.create({
 // Storing JWTs in localStorage exposes them to XSS attacks.
 api.interceptors.request.use(
   (config) => {
+    // Explicitly identify this as a web client (browser)
+    config.headers["X-Client-Type"] = "web";
+
     // Add device fingerprint if available (non-sensitive — used for anomaly detection)
     const deviceFingerprint = localStorage.getItem("deviceFingerprint");
     if (deviceFingerprint) {
@@ -58,6 +61,9 @@ api.interceptors.response.use(
         case 400:
           toast.error(data.error?.message || "Bad request");
           break;
+        case 409:
+          toast.error(data.error?.message || "This account is already registered.");
+          break;
         case 401:
           // For auth endpoints, let the caller/AuthContext handle the error
           if (
@@ -75,7 +81,7 @@ api.interceptors.response.use(
             config._retry = true;
             try {
               await axios.post(
-                `${process.env.REACT_APP_API_BASE_URL || "https://afra-pay-backend-jnlv.onrender.com/api/v1"}/auth/refresh-token`,
+                `${process.env.REACT_APP_API_BASE_URL || LOCAL_API_BASE_URL}/auth/refresh-token`,
                 {},
                 { withCredentials: true },
               );

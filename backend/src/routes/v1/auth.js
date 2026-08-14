@@ -110,6 +110,16 @@ const changePasswordValidation = [
 // Authentication routes
 
 /**
+ * @route   GET /api/v1/auth/debug/appwrite-user
+ * @desc    Debug a registration conflict by checking the exact Appwrite Auth user by email/phone
+ * @access  Public (local debugging only)
+ */
+router.get(
+  "/debug/appwrite-user",
+  asyncHandler(authController.debugAppwriteUser.bind(authController)),
+);
+
+/**
  * @route   POST /api/v1/auth/register
  * @desc    Register a new user
  * @access  Public

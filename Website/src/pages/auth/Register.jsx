@@ -354,7 +354,7 @@ const Register = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!validateStep(2)) {
+    if (loading || !validateStep(2)) {
       return;
     }
 
@@ -363,6 +363,11 @@ const Register = () => {
       toast.error("Please choose a stronger password for better security.");
       return;
     }
+
+    const idempotencyKey =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
     setLoading(true);
 
@@ -390,6 +395,7 @@ const Register = () => {
         password: formData.password,
         termsAccepted: formData.termsAccepted,
         marketingAccepted: formData.marketingAccepted,
+        idempotencyKey,
       };
 
       // Make API call to backend
@@ -432,7 +438,13 @@ const Register = () => {
           toast.error(detail.message);
         });
       } else if (error.response?.status === 409) {
-        toast.error("An account with this email already exists.");
+        const conflictMessage =
+          error.response?.data?.error?.message || error.response?.data?.message;
+
+        toast.error(
+          conflictMessage ||
+            "This account is already registered. Please sign in or reset your password.",
+        );
       } else {
         const message =
           error.response?.data?.error?.message ||
