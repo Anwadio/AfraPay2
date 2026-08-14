@@ -188,11 +188,7 @@ function App() {
                       />
                       <Route
                         path="verify-email/:token"
-                        element={
-                          <PublicRoute>
-                            <VerifyEmail />
-                          </PublicRoute>
-                        }
+                        element={<VerifyEmail />}
                       />
                     </Route>
 
