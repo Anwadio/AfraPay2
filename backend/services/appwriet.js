@@ -6,13 +6,39 @@
 const { ID, Query } = require("node-appwrite");
 const { databaseManager } = require("../src/database/connection");
 
+function createUnavailableAppwriteClient(clientName) {
+  const message =
+    `Appwrite ${clientName} client is not initialized. ` +
+    "Ensure Appwrite is reachable and backend startup completed successfully.";
+
+  return new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        if (prop === "then") return undefined;
+        if (prop === "inspect") return undefined;
+
+        const methodName = String(prop);
+        return (...args) => {
+          const err = new Error(message);
+          if (args.length > 0 && typeof args[args.length - 1] === "function") {
+            args[args.length - 1](err);
+            return undefined;
+          }
+          return Promise.reject(err);
+        };
+      },
+      apply() {
+        return Promise.reject(new Error(message));
+      },
+    },
+  );
+}
+
 function ensureAppwriteInitialized(clientName) {
   const client = databaseManager[clientName];
   if (!client) {
-    throw new Error(
-      `Appwrite ${clientName} client is not initialized. ` +
-        "Ensure Appwrite is reachable and backend startup completed successfully.",
-    );
+    return createUnavailableAppwriteClient(clientName);
   }
   return client;
 }
