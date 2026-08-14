@@ -4,7 +4,6 @@
  */
 
 const express = require('express');
-const swaggerUi = require('swagger-ui-express');
 const config = require('../config/environment');
 const logger = require('../utils/logger');
 const { getDatabaseHealth } = require('../database/connection');
@@ -57,6 +56,7 @@ function setupRoutes(app) {
   // API Documentation (Swagger)
   if (config.features.swagger && config.app.isDevelopment) {
     try {
+      const swaggerUi = require('swagger-ui-express');
       const swaggerDocument = require('../../docs/swagger.json');
       app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
         explorer: true,
