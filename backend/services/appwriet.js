@@ -36,7 +36,11 @@ function createUnavailableAppwriteClient(clientName) {
 }
 
 function ensureAppwriteInitialized(clientName) {
-  const client = databaseManager[clientName];
+  if (databaseManager && typeof databaseManager.ensureAppwriteClients === "function") {
+    databaseManager.ensureAppwriteClients();
+  }
+
+  const client = databaseManager?.[clientName];
   if (!client) {
     return createUnavailableAppwriteClient(clientName);
   }

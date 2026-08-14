@@ -19,18 +19,39 @@ class DatabaseManager {
   }
 
   /**
+   * Ensure Appwrite clients exist even if the singleton was reset or accessed
+   * before startup completed.
+   */
+  ensureAppwriteClients() {
+    if (
+      !this.appwriteClient ||
+      !this.databases ||
+      !this.users ||
+      !this.account
+    ) {
+      this.appwriteClient = new Client()
+        .setEndpoint(config.database.appwrite.endpoint)
+        .setProject(config.database.appwrite.projectId)
+        .setKey(config.database.appwrite.apiKey);
+
+      this.databases = new Databases(this.appwriteClient);
+      this.users = new Users(this.appwriteClient);
+      this.account = new Account(this.appwriteClient);
+    }
+
+    return {
+      client: this.appwriteClient,
+      databases: this.databases,
+      users: this.users,
+      account: this.account,
+    };
+  }
+
+  /**
    * Initialize Appwrite client
    */
   async initializeAppwrite() {
-    // Always set up client objects so routes can use them once Appwrite is reachable
-    this.appwriteClient = new Client()
-      .setEndpoint(config.database.appwrite.endpoint)
-      .setProject(config.database.appwrite.projectId)
-      .setKey(config.database.appwrite.apiKey);
-
-    this.databases = new Databases(this.appwriteClient);
-    this.users = new Users(this.appwriteClient);
-    this.account = new Account(this.appwriteClient);
+    this.ensureAppwriteClients();
 
     // Test connectivity — warn but do NOT throw; the server can still start
     try {
