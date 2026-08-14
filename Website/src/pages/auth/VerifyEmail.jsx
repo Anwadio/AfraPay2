@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import React, { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { authAPI } from "../../services/api";
@@ -12,6 +13,9 @@ const STATUS = {
 };
 
 const VerifyEmail = () => {
+  // DEBUG: Log that component mounted
+  console.log("[DEBUG] VerifyEmail component mounted");
+  
   const { token: pathToken } = useParams();
   const [searchParams] = useSearchParams();
   const queryToken = searchParams.get("token");
@@ -20,6 +24,8 @@ const VerifyEmail = () => {
   const token = pathToken || queryToken;
   const [status, setStatus] = useState(STATUS.LOADING);
   const [message, setMessage] = useState("");
+
+  console.log("[DEBUG] VerifyEmail token:", token);
 
   useEffect(() => {
     if (!token) {
