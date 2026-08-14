@@ -9,7 +9,7 @@ const logger = require("../utils/logger");
 
 const resend = new Resend(config.external.resend.apiKey);
 const FROM = config.external.resend.fromEmail || "noreply@afrapayafrica.com";
-const APP_URL = config.external.appUrl || "http://localhost:3000";
+const APP_URL = config.external.appUrl || "https://www.afrapayafrica.com";
 
 /**
  * Send email verification link to a newly registered user.
@@ -20,7 +20,7 @@ const APP_URL = config.external.appUrl || "http://localhost:3000";
  */
 async function sendVerificationEmail(email, verificationToken, firstName) {
   // Link goes to the frontend verification page which calls the backend API.
-  // APP_URL is the public frontend URL (e.g. http://localhost:3000 in dev).
+  // APP_URL is the public frontend URL (e.g. https://www.afrapayafrica.com in production).
   const verifyUrl = `${APP_URL}/auth/verify-email?token=${encodeURIComponent(verificationToken)}`;
 
   const { data, error } = await resend.emails.send({
