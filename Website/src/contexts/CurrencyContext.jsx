@@ -46,13 +46,20 @@ export const CurrencyProvider = ({ children }) => {
     return localStorage.getItem(STORAGE_KEY) || "USD";
   });
   const [isLoading, setIsLoading] = useState(true);
+  const { isAuthenticated } = useAuth();
 
   // On mount, fetch the user's profile to derive country-based default
-  // (only used when no explicit preference is stored yet)
+  // (only used when no explicit preference is stored yet and user is authenticated)
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       // User already has an explicit preference — nothing to derive
+      setIsLoading(false);
+      return;
+    }
+
+    // Only attempt to fetch profile if user is authenticated
+    if (!isAuthenticated) {
       setIsLoading(false);
       return;
     }
@@ -75,7 +82,7 @@ export const CurrencyProvider = ({ children }) => {
         // Not logged in or network error — keep fallback "USD"
       })
       .finally(() => setIsLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setCurrency = useCallback((code) => {
     setCurrencyState(code);
