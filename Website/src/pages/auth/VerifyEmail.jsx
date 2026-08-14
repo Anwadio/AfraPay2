@@ -3,6 +3,12 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { authAPI } from "../../services/api";
 
+// Log immediately when module is loaded
+if (typeof window !== "undefined") {
+  window.__VERIFY_EMAIL_MODULE_LOADED = true;
+  console.log("[VERIFY_EMAIL] Module loaded at", new Date().toISOString());
+}
+
 const STATUS = {
   LOADING: "loading",
   SUCCESS: "success",
@@ -14,7 +20,10 @@ const STATUS = {
 
 const VerifyEmail = () => {
   // DEBUG: Log that component mounted
-  console.log("[DEBUG] VerifyEmail component mounted");
+  console.log("[DEBUG] VerifyEmail component mounted at", new Date().toISOString());
+  if (typeof window !== "undefined") {
+    window.__VERIFY_EMAIL_COMPONENT_RENDERED = true;
+  }
   
   const { token: pathToken } = useParams();
   const [searchParams] = useSearchParams();

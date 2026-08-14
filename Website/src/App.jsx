@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "react-query";
 import { Toaster } from "react-hot-toast";
@@ -58,6 +59,20 @@ const Exchange = lazy(() => import("./pages/Exchange.jsx"));
 const PayBills = lazy(() => import("./pages/PayBills.jsx"));
 const MerchantDashboard = lazy(() => import("./pages/MerchantDashboard.jsx"));
 const Subscriptions = lazy(() => import("./pages/Subscriptions.jsx"));
+
+// ── Route logger component (logs all navigation) ────
+function RouteLogger() {
+  const location = useLocation();
+  
+  useEffect(() => {
+    console.log("[ROUTE] Navigation to:", location.pathname + location.search, "at", new Date().toISOString());
+    if (typeof window !== "undefined") {
+      window.__LAST_ROUTE = location.pathname + location.search;
+    }
+  }, [location]);
+  
+  return null; // This component doesn't render anything
+}
 
 // ── Bootstrap theme before first render (prevents flash of wrong theme) ────
 (function initTheme() {
@@ -145,6 +160,7 @@ function App() {
                     </div>
                   }
                 >
+                  <RouteLogger />
                   <Routes>
                     {/* Public routes */}
                     <Route path="/" element={<PublicLayout />}>
