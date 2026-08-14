@@ -19,15 +19,84 @@ const { isBlacklisted } = require("../../utils/tokenBlacklist");
  * @returns {string|null} JWT token or null
  */
 function extractToken(req) {
-  // Check Authorization header (Bearer token)
-  const authHeader = req.get("Authorization");
-  if (authHeader && authHeader.startsWith("Bearer ")) {
-    return authHeader.slice(7); // Remove 'Bearer ' prefix
+  // Log available header and cookie names (no values) to help debug how
+  // clients are sending tokens. Do NOT log token values.
+  try {
+    const headerNames = Object.keys(req.headers || {});
+    const cookieNames = req.cookies ? Object.keys(req.cookies) : [];
+    logger.debug("Token request metadata", {
+      headerNames,
+      cookieNames,
+      url: req.originalUrl,
+      method: req.method,
+      requestId: req.id,
+    });
+  } catch (_) {
+    // Logging must never crash authentication
   }
 
-  // Check cookies (for web sessions)
-  if (req.cookies && req.cookies.accessToken) {
-    return req.cookies.accessToken;
+  // Prefer the standard Authorization header (case-insensitive)
+  const rawAuthHeader = req.headers?.authorization || req.get("Authorization");
+  if (rawAuthHeader) {
+    const bearerMatch = rawAuthHeader.match(/^Bearer\s+(.+)$/i);
+    if (bearerMatch) {
+      try {
+        logger.debug("Token detected", {
+          source: "Authorization header",
+          requestId: req.id,
+        });
+      } catch (_) {}
+      return bearerMatch[1];
+    }
+
+    // Some clients may send the token without the 'Bearer' prefix
+    const trimmed = String(rawAuthHeader).trim();
+    if (trimmed) {
+      try {
+        logger.debug("Token detected", {
+          source: "Authorization header (no Bearer)",
+          requestId: req.id,
+        });
+      } catch (_) {}
+      return trimmed;
+    }
+  }
+
+  // Common alternative headers used by some clients
+  const altToken =
+    req.get("X-Access-Token") ||
+    req.get("X-Auth-Token") ||
+    req.get("x-access-token") ||
+    req.get("x-auth-token");
+  if (altToken) {
+    try {
+      logger.debug("Token detected", {
+        source: "Alternate auth header",
+        requestId: req.id,
+      });
+    } catch (_) {}
+    return altToken;
+  }
+
+  // Check cookies (for web sessions) with several common cookie names
+  if (req.cookies) {
+    const cookieSource =
+      req.cookies.accessToken ||
+      req.cookies.access_token ||
+      req.cookies["appwrite-session"] ||
+      req.cookies.session ||
+      req.cookies.sessionId ||
+      null;
+    if (cookieSource) {
+      try {
+        logger.debug("Token detected", {
+          source: "Cookie",
+          cookieNames: Object.keys(req.cookies),
+          requestId: req.id,
+        });
+      } catch (_) {}
+    }
+    return cookieSource;
   }
 
   return null;

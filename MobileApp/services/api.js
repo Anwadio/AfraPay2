@@ -1,4 +1,5 @@
 import axios from "axios";
+import * as SecureStore from "expo-secure-store";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { STORAGE_KEY } from "../i18n";
 
@@ -13,15 +14,14 @@ const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Attach JWT token and Accept-Language header on every request
+// Attach JWT token (from SecureStore) and Accept-Language header on every request
 api.interceptors.request.use(
   async (config) => {
-    const [tokenEntry, langEntry] = await AsyncStorage.multiGet([
-      "accessToken",
-      STORAGE_KEY,
+    const [token, langEntry] = await Promise.all([
+      SecureStore.getItemAsync("accessToken"),
+      AsyncStorage.getItem(STORAGE_KEY),
     ]);
-    const token = tokenEntry[1];
-    const lang = langEntry[1] || "en";
+    const lang = langEntry || "en";
     if (token) config.headers.Authorization = `Bearer ${token}`;
     // Tell the backend which language the user has selected
     config.headers["Accept-Language"] = lang;
@@ -31,12 +31,15 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Handle 401 by clearing tokens and throwing
+// Handle 401 by clearing tokens from SecureStore and throwing
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     if (error.response?.status === 401) {
-      await AsyncStorage.multiRemove(["accessToken", "user"]);
+      await Promise.all([
+        SecureStore.deleteItemAsync("accessToken"),
+        SecureStore.deleteItemAsync("user"),
+      ]);
     }
     return Promise.reject(error);
   },

@@ -5,12 +5,15 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from "expo-secure-store";
 import { authAPI, userAPI } from "../services/api";
 import {
   registerForPushNotifications,
   unregisterPushToken,
 } from "../services/pushNotificationService";
+
+const TOKEN_KEY = "accessToken";
+const USER_KEY = "user";
 
 const AuthContext = createContext(null);
 
@@ -19,29 +22,21 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // On mount: restore session from storage
-  useEffect(() => {
-    restoreSession();
-  }, []);
-
-  const restoreSession = async () => {
+  const restoreSession = useCallback(async () => {
     try {
-      const [token, storedUser] = await AsyncStorage.multiGet([
-        "accessToken",
-        "user",
+      const [accessToken, storedUser] = await Promise.all([
+        SecureStore.getItemAsync(TOKEN_KEY),
+        SecureStore.getItemAsync(USER_KEY),
       ]);
-      const accessToken = token[1];
-      const userData = storedUser[1];
-      if (accessToken && userData) {
-        setUser(JSON.parse(userData));
+      if (accessToken && storedUser) {
+        setUser(JSON.parse(storedUser));
         setIsAuthenticated(true);
         registerForPushNotifications().catch(() => {});
-        // Refresh profile from server silently
         try {
           const res = await userAPI.getProfile();
           const fresh = res.data?.user || res.data;
           setUser(fresh);
-          await AsyncStorage.setItem("user", JSON.stringify(fresh));
+          await SecureStore.setItemAsync(USER_KEY, JSON.stringify(fresh));
         } catch {
           // network error — use cached user
         }
@@ -51,13 +46,15 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  // On mount: restore session from secure storage
+  useEffect(() => {
+    restoreSession();
+  }, [restoreSession]);
 
   const login = useCallback(async ({ email, password }) => {
     const res = await authAPI.login({ email, password });
-    // Backend response shape: { success, data: { user, tokens: { accessToken, ... }, session }, message }
-    // The mobile axios instance returns the raw response (no response-interceptor unwrapping),
-    // so res.data is the full JSON body and the payload lives at res.data.data.
     const payload = res.data?.data || {};
 
     // MFA challenge — no token yet, caller must handle
@@ -72,9 +69,13 @@ export function AuthProvider({ children }) {
       throw new Error("Invalid response from server. Please try again.");
     }
 
-    await AsyncStorage.multiSet([
-      ["accessToken", jwt],
-      ["user", JSON.stringify(userData)],
+    await Promise.all([
+      SecureStore.setItemAsync(TOKEN_KEY, jwt, {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      }),
+      SecureStore.setItemAsync(USER_KEY, JSON.stringify(userData), {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      }),
     ]);
     setUser(userData);
     setIsAuthenticated(true);
@@ -94,9 +95,13 @@ export function AuthProvider({ children }) {
       payload.tokens?.accessToken || payload.token || payload.accessToken;
     const userData = payload.user;
     if (!jwt || !userData) throw new Error("Invalid response from server.");
-    await AsyncStorage.multiSet([
-      ["accessToken", jwt],
-      ["user", JSON.stringify(userData)],
+    await Promise.all([
+      SecureStore.setItemAsync(TOKEN_KEY, jwt, {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      }),
+      SecureStore.setItemAsync(USER_KEY, JSON.stringify(userData), {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      }),
     ]);
     setUser(userData);
     setIsAuthenticated(true);
@@ -111,9 +116,13 @@ export function AuthProvider({ children }) {
       payload.tokens?.accessToken || payload.token || payload.accessToken;
     const userData = payload.user;
     if (!jwt || !userData) throw new Error("Invalid response from server.");
-    await AsyncStorage.multiSet([
-      ["accessToken", jwt],
-      ["user", JSON.stringify(userData)],
+    await Promise.all([
+      SecureStore.setItemAsync(TOKEN_KEY, jwt, {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      }),
+      SecureStore.setItemAsync(USER_KEY, JSON.stringify(userData), {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      }),
     ]);
     setUser(userData);
     setIsAuthenticated(true);
@@ -128,7 +137,10 @@ export function AuthProvider({ children }) {
     } catch {
       // ignore network errors on logout
     }
-    await AsyncStorage.multiRemove(["accessToken", "user"]);
+    await Promise.all([
+      SecureStore.deleteItemAsync(TOKEN_KEY),
+      SecureStore.deleteItemAsync(USER_KEY),
+    ]);
     setUser(null);
     setIsAuthenticated(false);
   }, []);
@@ -137,7 +149,9 @@ export function AuthProvider({ children }) {
     async (updates) => {
       const updated = { ...user, ...updates };
       setUser(updated);
-      await AsyncStorage.setItem("user", JSON.stringify(updated));
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(updated), {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      });
     },
     [user],
   );
@@ -147,7 +161,9 @@ export function AuthProvider({ children }) {
       const res = await userAPI.getProfile();
       const fresh = res.data?.user || res.data;
       setUser(fresh);
-      await AsyncStorage.setItem("user", JSON.stringify(fresh));
+      await SecureStore.setItemAsync(USER_KEY, JSON.stringify(fresh), {
+        keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+      });
       return fresh;
     } catch (error) {
       if (error.response?.status === 401) {

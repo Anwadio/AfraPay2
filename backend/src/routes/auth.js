@@ -7,6 +7,7 @@ const express = require("express");
 const rateLimit = require("express-rate-limit");
 const authController = require("../controllers/authController");
 const { authenticate } = require("../middleware/auth/authenticate");
+const { verifyCaptcha } = require("../middleware/security/captcha");
 const validation = require("../middleware/validation/authValidation");
 const { asyncHandler } = require("../middleware/monitoring/errorHandler");
 const logger = require("../utils/logger");
@@ -34,6 +35,29 @@ const registrationLimiter = rateLimit({
     message: "Too many registration attempts. Please try again later.",
     code: "REGISTRATION_LIMIT_EXCEEDED",
   },
+});
+
+const mfaLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: {
+    success: false,
+    message: "Too many MFA attempts. Please try again later.",
+    code: "MFA_RATE_LIMIT_EXCEEDED",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// CAPTCHA site key config (public endpoint, no auth required)
+router.get("/config", (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      recaptchaSiteKey: process.env.RECAPTCHA_SITE_KEY || "",
+      recaptchaEnabled: !!process.env.RECAPTCHA_SECRET_KEY,
+    },
+  });
 });
 
 // Authentication routes
@@ -159,7 +183,7 @@ router.post(
   "/change-password",
   authenticate,
   validation.validateChangePassword,
-  asyncHandler(authController.changePassword.bind(authController)),
+  asyncHandler(authController.updateProfile.bind(authController)),
 );
 
 /**
