@@ -29,6 +29,7 @@ import React, {
   useState,
 } from "react";
 import { AppState } from "react-native";
+import { useAuth } from "./AuthContext";
 import { notificationsAPI } from "../services/api";
 import {
   addForegroundListener,
@@ -45,6 +46,7 @@ const NotificationContext = createContext(null);
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 export function NotificationProvider({ children }) {
+  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -116,10 +118,17 @@ export function NotificationProvider({ children }) {
 
   // ── Initial fetch + start polling on mount ─────────────────────────────────
   useEffect(() => {
+    if (!isAuthenticated) {
+      stopPolling();
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
     fetchNotifications();
     startPolling();
     return () => stopPolling();
-  }, [fetchNotifications, startPolling, stopPolling]);
+  }, [fetchNotifications, isAuthenticated, startPolling, stopPolling]);
 
   // ── Re-fetch full list when trigger changes ────────────────────────────────
   useEffect(() => {

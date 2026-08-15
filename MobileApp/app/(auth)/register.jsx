@@ -8,6 +8,8 @@ import {
   Platform,
   Image,
   StatusBar,
+  TextInput,
+  Modal,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -15,6 +17,21 @@ import { useAuth } from "../../contexts/AuthContext";
 import Input from "../../components/ui/Input";
 import Button from "../../components/ui/Button";
 import { useTranslation } from "react-i18next";
+
+const COUNTRY_OPTIONS = [
+  { code: "NG", name: "Nigeria", flag: "🇳🇬", dialCode: "+234" },
+  { code: "GH", name: "Ghana", flag: "🇬🇭", dialCode: "+233" },
+  { code: "KE", name: "Kenya", flag: "🇰🇪", dialCode: "+254" },
+  { code: "ZA", name: "South Africa", flag: "🇿🇦", dialCode: "+27" },
+  { code: "UG", name: "Uganda", flag: "🇺🇬", dialCode: "+256" },
+  { code: "TZ", name: "Tanzania", flag: "🇹🇿", dialCode: "+255" },
+  { code: "RW", name: "Rwanda", flag: "🇷🇼", dialCode: "+250" },
+  { code: "SN", name: "Senegal", flag: "🇸🇳", dialCode: "+221" },
+  { code: "CI", name: "Ivory Coast", flag: "🇨🇮", dialCode: "+225" },
+  { code: "CM", name: "Cameroon", flag: "🇨🇲", dialCode: "+237" },
+];
+
+const DEFAULT_COUNTRY = COUNTRY_OPTIONS[0];
 
 function PasswordStrengthBar({ password }) {
   const { t } = useTranslation();
@@ -133,6 +150,8 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(DEFAULT_COUNTRY);
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const { register } = useAuth();
   const router = useRouter();
 
@@ -163,6 +182,7 @@ export default function RegisterScreen() {
     if (!form.lastName.trim()) e.lastName = t("auth.lastNameRequired");
     if (!form.email.trim()) e.email = t("auth.emailRequired");
     else if (!/\S+@\S+\.\S+/.test(form.email)) e.email = t("auth.emailInvalid");
+    if (!form.country) e.country = "Please select your country";
     if (!form.phone.trim()) e.phone = t("auth.phoneRequired");
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -198,13 +218,14 @@ export default function RegisterScreen() {
     if (!validateStep2()) return;
     setLoading(true);
     try {
+      const normalizedPhone = `${selectedCountry.dialCode}${form.phone.replace(/\D/g, "")}`;
       await register({
         firstName: form.firstName.trim(),
         lastName: form.lastName.trim(),
         email: form.email.trim().toLowerCase(),
-        phone: form.phone.trim(),
+        phone: normalizedPhone,
         dateOfBirth: form.dateOfBirth || undefined,
-        country: form.country,
+        country: selectedCountry.code,
         password: form.password,
         termsAccepted: form.termsAccepted,
         marketingAccepted: form.marketingAccepted,
@@ -443,18 +464,174 @@ export default function RegisterScreen() {
                   onSubmitEditing={() => phoneRef.current?.focus()}
                 />
 
-                <Input
-                  label={t("auth.phone")}
-                  value={form.phone}
-                  onChangeText={set("phone")}
-                  placeholder="+254700000000"
-                  keyboardType="phone-pad"
-                  error={errors.phone}
-                  leftIcon={<Text style={{ fontSize: 16 }}>📱</Text>}
-                  inputRef={phoneRef}
-                  returnKeyType="done"
-                  onSubmitEditing={handleNext}
-                />
+                <View style={{ marginBottom: 16 }}>
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: "600",
+                      color: errors.phone ? "#ef4444" : "#475569",
+                      marginBottom: 6,
+                      letterSpacing: 0.1,
+                    }}
+                  >
+                    {t("auth.phone")}
+                  </Text>
+
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      borderWidth: 1.5,
+                      borderRadius: 14,
+                      borderColor: errors.phone ? "#fca5a5" : "#e2e8f0",
+                      backgroundColor: errors.phone ? "#fff5f5" : "#f8fafc",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <TouchableOpacity
+                      onPress={() => setShowCountryPicker(true)}
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        paddingHorizontal: 12,
+                        paddingVertical: 14,
+                        borderRightWidth: 1,
+                        borderRightColor: "#e2e8f0",
+                        backgroundColor: "#fff",
+                      }}
+                    >
+                      <Text style={{ fontSize: 16, marginRight: 6 }}>
+                        {selectedCountry.flag}
+                      </Text>
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: "#0f172a" }}>
+                        {selectedCountry.dialCode}
+                      </Text>
+                    </TouchableOpacity>
+
+                    <TextInput
+                      ref={phoneRef}
+                      value={form.phone}
+                      onChangeText={(text) => {
+                        const digitsOnly = text.replace(/\D/g, "");
+                        setForm((p) => ({ ...p, phone: digitsOnly }));
+                        if (errors.phone) setErrors((p) => ({ ...p, phone: "" }));
+                      }}
+                      placeholder="700000000"
+                      keyboardType="phone-pad"
+                      autoCapitalize="none"
+                      returnKeyType="done"
+                      onSubmitEditing={handleNext}
+                      style={{
+                        flex: 1,
+                        fontSize: 15,
+                        color: "#0f172a",
+                        paddingVertical: 14,
+                        paddingHorizontal: 12,
+                      }}
+                    />
+                  </View>
+
+                  {errors.phone ? (
+                    <Text
+                      style={{
+                        color: "#ef4444",
+                        fontSize: 12,
+                        marginTop: 5,
+                        marginLeft: 2,
+                        fontWeight: "500",
+                      }}
+                    >
+                      ⚠ {errors.phone}
+                    </Text>
+                  ) : (
+                    <Text
+                      style={{
+                        color: "#94a3b8",
+                        fontSize: 12,
+                        marginTop: 5,
+                        marginLeft: 2,
+                      }}
+                    >
+                      Contacts will be saved as {selectedCountry.dialCode}xxxxxxxx
+                    </Text>
+                  )}
+                </View>
+
+                <Modal
+                  visible={showCountryPicker}
+                  transparent
+                  animationType="slide"
+                  onRequestClose={() => setShowCountryPicker(false)}
+                >
+                  <View
+                    style={{
+                      flex: 1,
+                      backgroundColor: "rgba(15, 23, 42, 0.45)",
+                      justifyContent: "flex-end",
+                    }}
+                  >
+                    <View
+                      style={{
+                        backgroundColor: "#fff",
+                        borderTopLeftRadius: 24,
+                        borderTopRightRadius: 24,
+                        paddingHorizontal: 20,
+                        paddingTop: 16,
+                        paddingBottom: 28,
+                        maxHeight: "70%",
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          marginBottom: 12,
+                        }}
+                      >
+                        <Text style={{ fontSize: 18, fontWeight: "700", color: "#0f172a" }}>
+                          Select country
+                        </Text>
+                        <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
+                          <Text style={{ fontSize: 16, color: "#2563eb", fontWeight: "600" }}>
+                            Done
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <ScrollView showsVerticalScrollIndicator={false}>
+                        {COUNTRY_OPTIONS.map((country) => (
+                          <TouchableOpacity
+                            key={country.code}
+                            onPress={() => {
+                              setSelectedCountry(country);
+                              setForm((p) => ({ ...p, country: country.code }));
+                              setShowCountryPicker(false);
+                            }}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              paddingVertical: 14,
+                              borderBottomWidth: 1,
+                              borderBottomColor: "#e2e8f0",
+                            }}
+                          >
+                            <View style={{ flexDirection: "row", alignItems: "center" }}>
+                              <Text style={{ fontSize: 24, marginRight: 12 }}>{country.flag}</Text>
+                              <Text style={{ fontSize: 15, color: "#0f172a", fontWeight: "600" }}>
+                                {country.name}
+                              </Text>
+                            </View>
+                            <Text style={{ fontSize: 14, color: "#475569", fontWeight: "600" }}>
+                              {country.dialCode}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+                  </View>
+                </Modal>
 
                 <Button
                   title={t("auth.continue")}

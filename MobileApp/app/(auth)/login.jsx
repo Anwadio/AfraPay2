@@ -25,16 +25,29 @@ import Button from "../../components/ui/Button";
 WebBrowser.maybeCompleteAuthSession();
 
 const { width } = Dimensions.get("window");
+const GOOGLE_CLIENT_ID =
+  /* process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ||
+  process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || */
+  "886766195729-7qm3i975ekvea19phrtmnsngk78t8ts3.apps.googleusercontent.com";
+
+const GoogleIcon = () => (
+  <View style={{ width: 22, height: 22, alignItems: "center", justifyContent: "center" }}>
+    <Text style={{ fontSize: 18, fontWeight: "700", lineHeight: 20 }}>
+      <Text style={{ color: "#4285F4" }}>G</Text>
+      <Text style={{ color: "#EA4335" }}>o</Text>
+      <Text style={{ color: "#FBBC05" }}>o</Text>
+      <Text style={{ color: "#4285F4" }}>g</Text>
+      <Text style={{ color: "#34A853" }}>l</Text>
+      <Text style={{ color: "#EA4335" }}>e</Text>
+    </Text>
+  </View>
+);
 
 // Discovery documents — avoids network fetch on each render
 const GOOGLE_DISCOVERY = {
   authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
   tokenEndpoint: "https://oauth2.googleapis.com/token",
 };
-const FACEBOOK_DISCOVERY = {
-  authorizationEndpoint: "https://www.facebook.com/v6.0/dialog/oauth",
-};
-
 export default function LoginScreen() {
   const { t } = useTranslation();
   const [email, setEmail] = useState("");
@@ -44,8 +57,8 @@ export default function LoginScreen() {
   const [globalError, setGlobalError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState(null); // 'google' | 'facebook' | null
-  const { login, loginWithGoogle, loginWithFacebook } = useAuth();
+  const [socialLoading, setSocialLoading] = useState(null); // 'google' | null
+  const { login, loginWithGoogle } = useAuth();
   const router = useRouter();
   const { message: routeMessage } = useLocalSearchParams();
   const passwordRef = useRef(null);
@@ -54,11 +67,11 @@ export default function LoginScreen() {
     if (routeMessage) setSuccessMessage(String(routeMessage));
   }, [routeMessage]);
 
-  // ── Google OAuth (uses clientId as universal fallback — no platform-specific IDs needed) ──
+  // Google OAuth follows the same ID-token flow the website uses.
   const [, googleResponse, googlePromptAsync] = AuthSession.useAuthRequest(
     {
-      clientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-      redirectUri: AuthSession.makeRedirectUri({ scheme: "afrapayapp" }),
+      clientId: GOOGLE_CLIENT_ID,
+      redirectUri: AuthSession.makeRedirectUri({ useProxy: true }),
       scopes: ["openid", "email", "profile"],
       responseType: AuthSession.ResponseType.IdToken,
     },
@@ -88,42 +101,6 @@ export default function LoginScreen() {
       setSocialLoading(null);
     }
   }, [googleResponse]);
-
-  // ── Facebook OAuth ──
-  const [, fbResponse, fbPromptAsync] = AuthSession.useAuthRequest(
-    {
-      clientId: process.env.EXPO_PUBLIC_FACEBOOK_APP_ID,
-      redirectUri: AuthSession.makeRedirectUri({
-        scheme: "afrapayapp",
-        native: `fb${process.env.EXPO_PUBLIC_FACEBOOK_APP_ID}://authorize`,
-      }),
-      scopes: ["public_profile", "email"],
-      responseType: AuthSession.ResponseType.Token,
-    },
-    FACEBOOK_DISCOVERY,
-  );
-
-  useEffect(() => {
-    if (fbResponse?.type === "success") {
-      const accessToken = fbResponse.params?.access_token;
-      if (accessToken) handleFacebookLogin(accessToken);
-      else {
-        setGlobalError("Facebook sign-in failed: no token returned.");
-        setSocialLoading(null);
-      }
-    } else if (fbResponse?.type === "error") {
-      setGlobalError(
-        fbResponse.error?.message ||
-          "Facebook sign-in failed. Please try again.",
-      );
-      setSocialLoading(null);
-    } else if (
-      fbResponse?.type === "dismiss" ||
-      fbResponse?.type === "cancel"
-    ) {
-      setSocialLoading(null);
-    }
-  }, [fbResponse]);
 
   const validate = () => {
     const e = {};
@@ -174,28 +151,6 @@ export default function LoginScreen() {
         err.response?.data?.error?.message ||
           err.response?.data?.message ||
           "Google sign-in failed. Please try again.",
-      );
-    } finally {
-      setSocialLoading(null);
-    }
-  };
-
-  const handleFacebookLogin = async (accessToken) => {
-    setSocialLoading("facebook");
-    try {
-      const res = await fetch(
-        `https://graph.facebook.com/me?access_token=${accessToken}`,
-      );
-      const fbData = await res.json();
-      if (!fbData.id) throw new Error("Could not retrieve Facebook user ID.");
-      await loginWithFacebook(accessToken, fbData.id);
-      router.replace("/(tabs)");
-    } catch (err) {
-      setGlobalError(
-        err.response?.data?.error?.message ||
-          err.response?.data?.message ||
-          err.message ||
-          "Facebook sign-in failed. Please try again.",
       );
     } finally {
       setSocialLoading(null);
@@ -427,6 +382,8 @@ export default function LoginScreen() {
             />
 
             {/* Divider */}
+            {/* Google sign-in is temporarily disabled while the OAuth redirect is being finalized. */}
+            {/*
             <View
               style={{
                 flexDirection: "row",
@@ -452,40 +409,46 @@ export default function LoginScreen() {
               />
             </View>
 
-            {/* Social buttons */}
-            <View style={{ flexDirection: "row", gap: 12 }}>
-              {/* Google */}
+            <View style={{ alignItems: "center" }}>
               <TouchableOpacity
-                onPress={() => {
+                onPress={async () => {
+                  if (!GOOGLE_CLIENT_ID) {
+                    setGlobalError("Google sign-in is not configured yet.");
+                    return;
+                  }
+
                   setGlobalError("");
                   setSocialLoading("google");
-                  googlePromptAsync();
+
+                  try {
+                    const result = await googlePromptAsync();
+                    if (result?.type === "dismiss") {
+                      setSocialLoading(null);
+                    }
+                  } catch (error) {
+                    setGlobalError("Google sign-in failed. Please try again.");
+                    setSocialLoading(null);
+                  }
                 }}
                 disabled={!!socialLoading || loading}
                 style={{
-                  flex: 1,
+                  width: "100%",
                   flexDirection: "row",
                   alignItems: "center",
                   justifyContent: "center",
-                  gap: 8,
+                  gap: 10,
                   paddingVertical: 13,
                   borderRadius: 14,
                   borderWidth: 1.5,
                   borderColor: "#e2e8f0",
-                  backgroundColor:
-                    socialLoading === "google" ? "#f8fafc" : "#fff",
-                  opacity:
-                    socialLoading && socialLoading !== "google" ? 0.5 : 1,
+                  backgroundColor: socialLoading === "google" ? "#f8fafc" : "#fff",
                 }}
               >
                 {socialLoading === "google" ? (
                   <ActivityIndicator size="small" color="#4285F4" />
                 ) : (
                   <>
-                    {/* Google G icon */}
-                    <View style={{ width: 20, height: 20 }}>
-                      <Text style={{ fontSize: 17, lineHeight: 20 }}>G</Text>
-                    </View>
+                    <GoogleIcon />
                     <Text
                       style={{
                         fontSize: 14,
@@ -493,62 +456,13 @@ export default function LoginScreen() {
                         color: "#374151",
                       }}
                     >
-                      Google
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-
-              {/* Facebook */}
-              <TouchableOpacity
-                onPress={() => {
-                  setGlobalError("");
-                  setSocialLoading("facebook");
-                  fbPromptAsync();
-                }}
-                disabled={!!socialLoading || loading}
-                style={{
-                  flex: 1,
-                  flexDirection: "row",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 8,
-                  paddingVertical: 13,
-                  borderRadius: 14,
-                  borderWidth: 1.5,
-                  borderColor: "#e2e8f0",
-                  backgroundColor:
-                    socialLoading === "facebook" ? "#f8fafc" : "#fff",
-                  opacity:
-                    socialLoading && socialLoading !== "facebook" ? 0.5 : 1,
-                }}
-              >
-                {socialLoading === "facebook" ? (
-                  <ActivityIndicator size="small" color="#1877F2" />
-                ) : (
-                  <>
-                    <Text
-                      style={{
-                        fontSize: 17,
-                        color: "#1877F2",
-                        lineHeight: 20,
-                      }}
-                    >
-                      f
-                    </Text>
-                    <Text
-                      style={{
-                        fontSize: 14,
-                        fontWeight: "600",
-                        color: "#374151",
-                      }}
-                    >
-                      Facebook
+                      Continue with Google
                     </Text>
                   </>
                 )}
               </TouchableOpacity>
             </View>
+            */}
 
             {/* Register link */}
             <View style={{ alignItems: "center", marginTop: 28 }}>

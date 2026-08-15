@@ -184,8 +184,9 @@ class AuthController {
     } = req.body;
 
     const normalizedEmail = String(email || "").trim().toLowerCase();
-    const normalizedPhone = String(phone || "").trim();
-    const requestKey = idempotencyKey || `${normalizedEmail}:${normalizedPhone}`;
+    const rawPhone = String(phone || "").trim();
+    const normalizedPhone = this.normalizePhoneForAppwrite(rawPhone);
+    const requestKey = idempotencyKey || `${normalizedEmail}:${normalizedPhone || ""}`;
 
     const cachedRegistration = registrationIdempotencyStore.get(requestKey);
     if (
@@ -245,10 +246,11 @@ class AuthController {
       let user;
 
       try {
+        const appwritePhone = normalizedPhone || undefined;
         user = await users.create(
           userId,
           normalizedEmail,
-          normalizedPhone,
+          appwritePhone,
           password,
           `${firstName} ${lastName}`,
         );
@@ -321,7 +323,7 @@ class AuthController {
           email,
           firstName,
           lastName,
-          phone: phone || "",
+          phone: normalizedPhone || "",
           country,
           dateOfBirth: dateOfBirth
             ? new Date(dateOfBirth).toISOString()
@@ -1044,8 +1046,10 @@ class AuthController {
       errors.push("Last name must be at least 2 characters");
     }
 
+    const normalizedPhone = this.normalizePhoneForAppwrite(userData.phone);
+
     // Phone validation (if provided)
-    if (userData.phone && !this.isValidPhoneNumber(userData.phone)) {
+    if (normalizedPhone && !this.isValidPhoneNumber(normalizedPhone)) {
       errors.push("Invalid phone number format");
     }
 
@@ -1408,6 +1412,34 @@ class AuthController {
   // Add more helper methods as needed...
   isValidEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  normalizePhoneForAppwrite(phone) {
+    if (phone === null || phone === undefined) return "";
+
+    let cleaned = String(phone).trim();
+    if (!cleaned) return "";
+
+    cleaned = cleaned.replace(/\s+/g, "");
+    cleaned = cleaned.replace(/[()\-]/g, "");
+    cleaned = cleaned.replace(/^[\u200B-\u200D\uFEFF]+/, "");
+
+    if (cleaned.startsWith("00")) {
+      cleaned = `+${cleaned.slice(2)}`;
+    }
+
+    cleaned = cleaned.replace(/[^\d+]/g, "");
+
+    if (!cleaned.startsWith("+")) {
+      cleaned = `+${cleaned.replace(/^\+/, "")}`;
+    }
+
+    const digits = cleaned.replace(/^\+/, "");
+    if (/^\d{7,15}$/.test(digits)) {
+      return `+${digits}`;
+    }
+
+    return "";
   }
 
   isValidPhoneNumber(phone) {
