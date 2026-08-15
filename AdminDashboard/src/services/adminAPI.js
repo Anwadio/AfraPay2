@@ -4,7 +4,7 @@ import Cookies from "js-cookie";
 // Create axios instance
 const api = axios.create({
   baseURL:
-    process.env.REACT_APP_API_URL || "https://afra-pay-backend.onrender.com",
+    process.env.REACT_APP_API_URL || "hhttps://afra-pay-backend-jnlv.onrender.com",
   withCredentials: true,
 });
 
