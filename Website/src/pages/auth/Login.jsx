@@ -626,7 +626,7 @@ const Login = () => {
         />
 
         {/* Facebook — opens FB OAuth popup, returns accessToken + userID */}
-        <FacebookLogin
+        {/* <FacebookLogin
           appId={process.env.REACT_APP_FACEBOOK_APP_ID || ""}
           onSuccess={handleFacebookSuccess}
           onFail={handleFacebookError}
@@ -644,7 +644,7 @@ const Login = () => {
               Facebook
             </button>
           )}
-        />
+        /> */}
       </div>
 
       {/* Sign up link */}
