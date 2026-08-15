@@ -223,7 +223,7 @@ const Login = () => {
   // Facebook Sign-In — FacebookLogin calls this with an accessToken + userID.
   // We send both to the backend which verifies via Facebook's debug_token API
   // to confirm the token is authentic and issued to our app.
-  const handleFacebookSuccess = async (response) => {
+  /* const handleFacebookSuccess = async (response) => {
     const accessToken =
       response.accessToken || response.authResponse?.accessToken;
     const userID = response.userID || response.authResponse?.userID;
@@ -266,7 +266,7 @@ const Login = () => {
   const handleFacebookError = (error) => {
     console.error("Facebook login error:", error);
     toast.error("Facebook sign-in was cancelled or failed.");
-  };
+  }; */
 
   const handleMfaSubmit = async (e) => {
     e.preventDefault();
