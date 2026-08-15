@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import toast from "react-hot-toast";
 import { GoogleLogin } from "@react-oauth/google";
-import FacebookLogin from "@greatsumini/react-facebook-login";
+/* import FacebookLogin from "@greatsumini/react-facebook-login"; */
 import { authAPI } from "../../services/api";
 import { useAuth } from "../../contexts/AuthContext";
 import SEOHead from "../../components/seo/SEOHead";
