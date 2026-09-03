@@ -13,13 +13,6 @@ const About = () => {
       linkedin: "#",
     },
     {
-      name: "Anthony",
-      role: "CTO & Co-founder",
-      image: "/api/placeholder/150/150",
-      bio: "Anthony Wai is a systems-driven CTO and founder building long-term, scalable technology infrastructure across Africa. He specializes in full-stack development and AI-integrated commerce, leading the creation of NileVerse Group—a multi-layered ecosystem that includes Nile Flow (AI-powered commerce), Nile Pay (fintech infrastructure), and Nile Learn (edtech platform). His work is centered on designing high-leverage systems that drive economic empowerment, behavioral engagement, and digital transformation, with a clear focus on generational wealth, continental scale, and faith-aligned leadership.",
-      linkedin: "#",
-    },
-    {
       name: "Joseph Mbeki",
       role: "Head of Product",
       image: "/api/placeholder/150/150",

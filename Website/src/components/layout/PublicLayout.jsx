@@ -231,7 +231,7 @@ const PublicLayout = () => {
                     fast, and affordable payment solutions.
                   </p>
                   <p className="text-neutral-500 text-sm mt-2">
-                    Juba City Centre, South Sudan
+                      Nairobi City , Kenya
                   </p>
                   <a
                     href="mailto:support@afrapayafrica.com"

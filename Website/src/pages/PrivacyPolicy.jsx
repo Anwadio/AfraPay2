@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { Link } from "react-router-dom";
+import { CheckCircle2, Clock3, ShieldCheck } from "lucide-react";
 import SEOHead from "../components/seo/SEOHead";
 import { SCHEMA_PRIVACY } from "../components/seo/schemas";
 
@@ -9,8 +10,9 @@ const SUPPORT_EMAIL = "privacy@afrapayafrica.com";
 const WEBSITE = "www.afrapayafrica.com";
 
 const Section = ({ id, title, children }) => (
-  <section id={id} className="mb-10">
-    <h2 className="text-xl font-semibold text-neutral-900 mb-4 border-b border-neutral-200 pb-2">
+  <section id={id} className="mb-12 scroll-mt-24">
+    <h2 className="text-xl font-semibold text-neutral-950 mb-4 pb-3 border-b border-neutral-200 flex items-center gap-3">
+      <span className="h-6 w-1 rounded-full bg-secondary-500" aria-hidden="true" />
       {title}
     </h2>
     <div className="space-y-3 text-neutral-700 leading-relaxed">{children}</div>
@@ -40,7 +42,7 @@ const PrivacyPolicy = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div className="min-h-screen bg-[#f5f7f8]">
       <SEOHead
         title="Privacy Policy"
         description="AfraPay's Privacy Policy explains how we collect, use, and protect your personal data in compliance with applicable data protection laws across Africa."
@@ -49,37 +51,51 @@ const PrivacyPolicy = () => {
       />
       {/* Hero */}
       <div
-        className="relative text-white py-14 px-4 overflow-hidden"
+        className="relative text-white py-16 px-4 overflow-hidden"
         style={{
           backgroundImage: "url('/Carouselimages/PrivacyImage.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
       >
-        <div className="absolute inset-0 bg-primary-900/75" />
-        <div className="max-w-4xl mx-auto text-center relative z-10">
-          <h1 className="text-3xl md:text-4xl font-bold mb-3">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary-950/95 via-primary-900/85 to-secondary-900/75" />
+        <div className="max-w-5xl mx-auto relative z-10">
+          <div className="flex items-center gap-2 text-secondary-300 text-xs font-semibold uppercase tracking-[0.2em] mb-5">
+            <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+            AfraPay trust centre
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
             Privacy Policy
           </h1>
-          <p className="text-primary-200 text-sm">
-            Effective Date: {EFFECTIVE_DATE}
+          <p className="text-primary-100 max-w-2xl text-base leading-relaxed">
+            Clear information about how AfraPay protects, uses, and gives you control over your personal data.
           </p>
+          <div className="mt-8 flex flex-wrap gap-3 text-sm">
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-2 text-primary-50">
+              <Clock3 className="w-4 h-4 text-secondary-300" aria-hidden="true" />
+              Effective {EFFECTIVE_DATE}
+            </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 border border-white/20 px-4 py-2 text-primary-50">
+              <CheckCircle2 className="w-4 h-4 text-emerald-300" aria-hidden="true" />
+              Your data, handled responsibly
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 py-12 lg:flex lg:gap-12">
+      <div className="max-w-6xl mx-auto px-4 py-10 lg:py-14 lg:flex lg:gap-10">
         {/* Sticky sidebar TOC (desktop) */}
         <aside className="hidden lg:block w-64 flex-shrink-0">
-          <div className="sticky top-8 bg-white rounded-xl border border-neutral-200 p-5">
-            <p className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3">
-              Contents
+          <div className="sticky top-24 rounded-2xl bg-primary-950 p-5 shadow-xl shadow-primary-950/10">
+            <p className="text-xs font-semibold text-secondary-300 uppercase tracking-[0.16em] mb-4">
+              On this page
             </p>
-            <nav className="space-y-1">
+            <nav className="space-y-0.5 border-l border-white/15 pl-3">
               {toc.map((item) => (
                 <a
                   key={item.id}
                   href={`#${item.id}`}
-                  className="block text-sm text-neutral-600 hover:text-primary-600 py-0.5 transition-colors"
+                  className="block text-sm text-primary-100/75 hover:text-white hover:border-secondary-400 border-l border-transparent -ml-[13px] pl-3 py-1 transition-colors"
                 >
                   {item.label}
                 </a>
@@ -89,8 +105,10 @@ const PrivacyPolicy = () => {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 bg-white rounded-xl border border-neutral-200 p-8">
-          <div className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+        <main className="flex-1 min-w-0 bg-white rounded-2xl border border-neutral-200/80 p-6 md:p-10 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
+          <div className="mb-10 p-5 bg-primary-50 border border-primary-100 rounded-xl text-sm text-primary-900 flex gap-3">
+            <ShieldCheck className="w-5 h-5 shrink-0 text-primary-600 mt-0.5" aria-hidden="true" />
+            <p>
             Your privacy matters to us. This policy explains what data we
             collect, why we collect it, and how you can control it. For
             questions, email{" "}
@@ -101,6 +119,7 @@ const PrivacyPolicy = () => {
               {SUPPORT_EMAIL}
             </a>
             .
+            </p>
           </div>
 
           <Section id="overview" title="1. Overview">

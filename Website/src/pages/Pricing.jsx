@@ -99,7 +99,7 @@ const Pricing = () => {
       <section
         className="bg-gradient-to-r from-primary-800 via-primary-700 to-secondary-700 text-white py-16"
         style={{
-          backgroundImage: "url('/Carouselimages/PricingImage.png')",
+          backgroundImage: "url('/Carouselimages/AfraPay.png')",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}

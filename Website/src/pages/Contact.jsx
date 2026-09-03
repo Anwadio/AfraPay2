@@ -31,8 +31,8 @@ const CONTACT_CHANNELS = [
     icon: "phone",
     title: "Call Us",
     description: "Available Monday – Friday, 8am – 8pm EAT.",
-    value: "+211 92 000 0000",
-    action: "tel:+211920000000",
+    value: "+254 740 684 460",
+    action: "tel:+254740684460",
     actionLabel: "Call Now",
     color: "bg-success-50 text-success-600",
   },
@@ -48,15 +48,15 @@ const CONTACT_CHANNELS = [
   {
     icon: "mapPin",
     title: "Visit Us",
-    description: "Head office in the heart of Juba.",
-    value: "Juba City Centre, South Sudan",
+    description: "Head office in the heart of Nairobi.",
+    value: "Nairobi City Centre, Kenya",
     action: "directions",
     actionLabel: "Get Directions",
     color: "bg-warning-50 text-warning-600",
     coordinates: {
       lat: 4.8594,
       lng: 31.5713,
-      address: "Juba City Centre, Ministries Road, Juba, South Sudan",
+      address: "Nairobi City Centre, Ministries Road, Nairobi, Kenya",
     },
   },
 ];
@@ -90,29 +90,13 @@ const FAQS = [
 
 const OFFICES = [
   {
-    city: "Juba",
-    country: "South Sudan",
-    address: "Juba City Centre, Ministries Road",
-    phone: "+211 92 000 0000",
+    city: "Nairobi",
+    country: "Kenya",
+    address: "Nairobi City Centre, Ministries Road",
+    phone: "+254 740 684 460",
     isHQ: true,
     coordinates: { lat: 4.8594, lng: 31.5713 },
-  },
-  {
-    city: "Wau",
-    country: "South Sudan",
-    address: "Wau Town, Commercial Street",
-    phone: "+211 92 000 0001",
-    isHQ: false,
-    coordinates: { lat: 7.7028, lng: 28.0098 },
-  },
-  {
-    city: "Malakal",
-    country: "South Sudan",
-    address: "Malakal Centre, Main Avenue",
-    phone: "+211 92 000 0002",
-    isHQ: false,
-    coordinates: { lat: 9.5334, lng: 31.6605 },
-  },
+  }
 ];
 
 const Contact = () => {
